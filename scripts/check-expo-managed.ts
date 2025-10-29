@@ -213,14 +213,10 @@ for (const [pkg, usages] of allDeps.entries()) {
       messages.push(`Should use "catalog:" but found "${usage.version}"`);
     }
 
-    // [ERROR 2] Expo管理対象がdependencies以外に配置されている
-    if (isManaged && usage.depType !== "dependencies") {
-      // @types/* パッケージはdevDependenciesでもOK
-      if (usage.depType === "devDependencies" && pkg.startsWith("@types/")) {
-        continue;
-      }
-
-      messages.push(`Found in ${usage.depType}, should be in dependencies`);
+    // [ERROR 2] Expo管理対象が devDependencies に配置されている（@types/* 以外）
+    // peerDependencies は許容（React Native ライブラリの標準パターン）
+    if (isManaged && usage.depType === "devDependencies" && !pkg.startsWith("@types/")) {
+      messages.push(`Found in devDependencies, should be in dependencies`);
     }
 
     // [ERROR 3] catalogを参照しているがcatalog定義がない
