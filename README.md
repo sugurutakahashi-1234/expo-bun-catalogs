@@ -2,6 +2,8 @@
 
 Expo 54 + Bun Workspaces + Catalog機能を使った、**Expo管理パッケージの依存バージョン管理システム**の検証リポジトリ。
 
+> **Catalog とは**: Bun 1.1.30以降で提供される、モノレポ内でパッケージバージョンを一元管理する機能です。rootの`package.json`に`catalog`フィールドを定義し、各パッケージが`"依存名": "catalog:"`と記述することで、ワークスペース全体で統一されたバージョンを参照できます。
+
 ## 🎯 このリポジトリの目的
 
 Expo SDK環境下で、**Expo CLIを活用した依存管理**と**Bun Catalogによる一元管理**を両立させるシステムの検証・実装。
@@ -53,78 +55,81 @@ Expo SDKは`react`, `react-native`などのパッケージを厳密にバージ�
 
 **理由**: Expo CLIのツールが正しく動作するため
 
-```json
-// ❌ NG: Expoアプリで catalog: を使うと...
+```ts
+// apps/expo/package.json - ❌ NG例
 {
-  "dependencies": {
-    "react": "catalog:",
-    "expo": "catalog:"
+  dependencies: {
+    react: "catalog:",  // ❌ expo install --fix が動作しない
+    expo: "catalog:"    // ❌ expo-doctor が正しくチェックできない
   }
 }
 ```
 
-**問題**:
-- `expo install --fix` が動作しない（バージョン文字列を解析できない）
-- `expo-doctor` が正しくチェックできない（具体的バージョンが必要）
-- Expo CLIがSDK互換性を判定できない
+**問題**: Expo CLIがバージョン文字列を解析できず、SDK互換性を判定できない
 
-```json
-// ✅ OK: Expoアプリは具体的バージョン
+```ts
+// apps/expo/package.json - ✅ OK例
 {
-  "dependencies": {
-    "react": "19.0.0",
-    "expo": "~54.0.0"
+  dependencies: {
+    react: "19.1.0",     // ✅ 具体的バージョン
+    expo: "^54.0.21"     // ✅ Expo CLIが管理可能
   }
 }
 ```
 
-**メリット**:
-- ✅ `expo install --fix` で自動修正できる
-- ✅ `expo-doctor` で依存関係を検証できる
-- ✅ Expo CLIがバージョンを管理できる
+**メリット**: `expo install --fix`で自動修正、`expo-doctor`で検証可能
 
 ### 2. 他パッケージは`catalog:`を使う
 
-```json
+#### `catalog:` プロトコルとは
+
+`catalog:` は Bun の Catalog 機能で使用する特殊な構文です：
+
+- **自動バージョン参照**: `"react": "catalog:"` と記述すると、root の `catalog` フィールドから自動的にバージョンを参照
+- **一元管理**: ワークスペース全体で一箇所（root `catalog`）だけバージョンを更新すれば、全パッケージに反映
+- **型安全**: 存在しない catalog エントリを参照するとエラー
+
+```ts
 // packages/ui/package.json
 {
-  "dependencies": {
-    "react": "catalog:",           // ← Expoアプリと自動同期
-    "react-native": "catalog:",
-    "lodash": "^4.17.21"          // ← 非Expo管理は具体的バージョン
+  dependencies: {
+    react: "catalog:",         // ✅ Expo管理 → root catalogから自動参照
+    "react-native": "catalog:", // ✅ Expo管理 → SDK更新時も自動追従
+    lodash: "^4.17.21"          // ⚪ 非Expo管理 → 具体的バージョン指定
   }
 }
 ```
 
-**メリット**:
-- ✅ Expoアプリのバージョンと自動的に統一
-- ✅ SDK更新時も自動で追従
-- ✅ バージョン不整合が起きない
+**メリット**: Expoアプリのバージョンと自動統一、バージョン不整合が起きない
 
 ### 3. Catalogには**Expo管理パッケージのみ**
 
-```json
-// ✅ OK: Expo管理パッケージ
+```ts
+// package.json (root) - ✅ OK例
 {
-  "catalog": {
-    "react": "19.0.0",
-    "react-native": "0.79.6",
-    "expo-constants": "~17.1.7"
+  catalog: {
+    react: "19.1.0",              // ✅ Expo SDK管理パッケージ
+    "react-native": "0.81.5",     // ✅ bundledNativeModules.json に含まれる
+    "expo-constants": "~18.0.10"  // ✅ apps/expo から自動同期される
   }
 }
 ```
 
-```json
-// ❌ NG: 非Expo管理パッケージは含めない
+```ts
+// package.json (root) - ❌ NG例
 {
-  "catalog": {
-    "lodash": "^4.17.21",  // ← これは不要
-    "next": "^15.0.0"      // ← これも不要
+  catalog: {
+    lodash: "^4.17.21",  // ❌ Expo管理外 → 各パッケージで個別指定すべき
+    next: "^15.0.0"      // ❌ Expo管理外 → catalogに含めない
   }
 }
 ```
 
-**判定基準**: `expo/bundledNativeModules.json`に含まれるパッケージのみ
+#### Expo管理パッケージの判定方法
+
+**判定基準**: Expoが提供する `bundledNativeModules.json` に含まれるパッケージのみがcatalogに含めるべきです。
+
+このファイルは、Expo SDKが公式に管理しているネイティブモジュールの一覧を定義しており、`expo install`コマンドが互換性のあるバージョンを自動選択する際にも使用されます。
 
 #### なぜ `bundledNativeModules.json` を基準にするのか
 
@@ -174,13 +179,13 @@ Expo CLIツール群も、このプロジェクトと同じファイルを参照
 │ bunx expo install   │     expo install --fix
 │ (具体的バージョン)   │     expo-doctor
 └──────────┬──────────┘
-           │ expo:sdk:sync
+           │ apps/expoのバージョンをcatalogに同期
            ↓
 ┌─────────────────────┐
 │ root catalog        │  ← Expo管理パッケージのみ
 │ (バージョン一元管理) │
 └──────────┬──────────┘
-           │ expo:sdk:fix
+           │ 他パッケージを catalog: に変換
            ↓
 ┌─────────────────────┐
 │ packages/*          │  ← catalog: 参照
@@ -190,40 +195,42 @@ Expo CLIツール群も、このプロジェクトと同じファイルを参照
 
 ## 📋 スクリプト（実行順）
 
+**基本フロー**: `expo:sdk:sync` → `expo:sdk:fix` → `bun install` → `expo:sdk:validate`
+
 ### 1. `bun run expo:sdk:detect`
-**何をする**: catalog未定義のExpo管理パッケージを検出
-**なぜ必要**: 追加すべきパッケージを事前に把握
-**いつ使う**: 最初に。何が足りないか確認
+- **何をする**: catalog未定義のExpo管理パッケージを検出
+- **ファイル変更**: なし（レポートのみ）
+- **いつ使う**: 最初に。何が足りないか確認
 
 ### 2. `bun run expo:fix`
-**何をする**: Expoアプリで`expo install --fix`を実行
-**なぜ必要**: Expo SDKと互換性のあるバージョンに自動修正
-**いつ使う**: SDK更新後、パッケージ追加後
+- **何をする**: Expoアプリで`expo install --fix`を実行
+- **ファイル変更**: `apps/expo/package.json` - 依存バージョンをSDK互換に自動修正
+- **いつ使う**: SDK更新後、パッケージ追加後
 
 ### 3. `bun run expo:sdk:sync`
-**何をする**: ExpoアプリのExpo管理パッケージをrootのcatalogに同期
-**なぜ必要**: Expoアプリのバージョンをワークスペース全体に伝播
-**いつ使う**: expo:fix実行後
+- **何をする**: ExpoアプリのExpo管理パッケージをrootのcatalogに同期
+- **ファイル変更**: `package.json`（root） - `catalog`フィールドを更新/追加
+- **いつ使う**: expo:fix実行後
 
 ### 4. `bun run expo:sdk:fix`
-**何をする**: 他パッケージの具体的バージョンを`catalog:`に自動変換
-**なぜ必要**: ワークスペース全体でバージョンを統一
-**いつ使う**: expo:sdk:sync実行後
+- **何をする**: 他パッケージの具体的バージョンを`catalog:`に自動変換
+- **ファイル変更**: `packages/*/package.json` - 依存関係を`catalog:`に変換
+- **いつ使う**: expo:sdk:sync実行後
 
 ### 5. `bun run expo:sdk:clean`
-**何をする**: 未使用catalogエントリを削除
-**なぜ必要**: catalogを綺麗に保つ
-**いつ使う**: expo:sdk:fix実行後
+- **何をする**: 未使用catalogエントリを削除
+- **ファイル変更**: `package.json`（root） - `catalog`から未使用エントリ削除
+- **いつ使う**: expo:sdk:fix実行後
 
 ### 6. `bun run expo:sdk:validate`
-**何をする**: 依存関係の整合性を検証（エラー検出）
-**なぜ必要**: catalog化漏れやバージョン不整合を発見
-**いつ使う**: 変更後は必ず実行
+- **何をする**: 依存関係の整合性を検証（エラー検出）
+- **ファイル変更**: なし（検証のみ）
+- **いつ使う**: 変更後は必ず実行
 
 ### 7. `bun run expo:doctor`
-**何をする**: Expoアプリで`expo-doctor`を実行
-**なぜ必要**: 依存関係の健全性をExpo CLIでチェック
-**いつ使う**: 最終検証として（必ず実行）
+- **何をする**: Expoアプリで`expo-doctor`を実行
+- **ファイル変更**: なし（チェックのみ）
+- **いつ使う**: 最終検証として（必ず実行）
 
 ## 🚀 基本ワークフロー
 
@@ -272,10 +279,10 @@ cd apps/expo && bunx expo install expo@latest && cd ../..
 # 2. Peer dependencyの確認と追加
 # SDKアップデート後、peer dependencyエラーが出る場合があります
 cd apps/expo && bun install
-# 例: "react-native-reanimated requires react-native-worklets"
+# 例: "react-native-reanimated requires react-native-worklets" のようなエラーが表示された場合
 
-# 必要に応じてpeer dependencyを追加
-bunx expo install react-native-worklets
+# エラーメッセージで要求されたパッケージを追加
+bunx expo install react-native-worklets  # 実際のエラーに応じてパッケージ名を変更
 cd ../..
 
 # 3. スクリプト実行
@@ -434,13 +441,17 @@ scripts/
 
 #### ルート package.json に追加
 
-```json
+```ts
+// package.json (root)
 {
-  "catalog": {},
-  "scripts": {
+  catalog: {},  // 初期は空、expo:sdk:sync で Expo管理パッケージが同期される
+  scripts: {
+    // Expo CLIツールの実行（Expoアプリ配下で実行）
     "expo:fix": "bun run --cwd apps/expo fix",
     "expo:check": "bun run --cwd apps/expo check",
     "expo:doctor": "bun run --cwd apps/expo doctor",
+
+    // Catalog管理用の自動化スクリプト
     "expo:sdk:sync": "bun run scripts/expo-sdk-sync-catalog.ts",
     "expo:sdk:validate": "bun run scripts/expo-sdk-validate-catalog.ts",
     "expo:sdk:detect": "bun run scripts/expo-sdk-detect-missing.ts",
@@ -454,28 +465,20 @@ scripts/
 
 #### Expo アプリの package.json に追加
 
-```json
+```ts
+// apps/expo/package.json
 {
-  "scripts": {
-    "fix": "bunx expo install --fix",
-    "check": "bunx expo install --check",
-    "doctor": "bunx expo-doctor"
+  scripts: {
+    fix: "bunx expo install --fix",      // SDK互換バージョンに自動修正
+    check: "bunx expo install --check",  // 依存関係の互換性チェック
+    doctor: "bunx expo-doctor"           // 健全性チェック
   }
 }
 ```
 
-### 初回セットアップ
+### セットアップ完了後
 
-```bash
-bun install
-bun run expo:sdk:detect    # 不足パッケージを確認
-bun run expo:fix          # Expo バージョンを修正
-bun run expo:sdk:sync      # カタログに同期
-bun run expo:sdk:fix       # catalog: 参照に変換
-bun run expo:sdk:clean     # 未使用エントリを削除
-bun install               # カタログで再インストール
-bun run expo:sdk:validate     # 検証（必ずパス）
-```
+ファイル配置が完了したら、上記の [🚀 基本ワークフロー](#-基本ワークフロー) セクションの「初回セットアップ」手順に従ってください。
 
 ### 重要なルール
 
