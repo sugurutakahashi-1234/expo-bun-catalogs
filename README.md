@@ -81,14 +81,6 @@ Expo SDKは`react`, `react-native`などのパッケージを厳密にバージ�
 
 ### 2. 他パッケージは`catalog:`を使う
 
-#### `catalog:` プロトコルとは
-
-`catalog:` は Bun の Catalog 機能で使用する特殊な構文です：
-
-- **自動バージョン参照**: `"react": "catalog:"` と記述すると、root の `catalog` フィールドから自動的にバージョンを参照
-- **一元管理**: ワークスペース全体で一箇所（root `catalog`）だけバージョンを更新すれば、全パッケージに反映
-- **型安全**: 存在しない catalog エントリを参照するとエラー
-
 ```ts
 // packages/ui/package.json
 {
@@ -125,17 +117,11 @@ Expo SDKは`react`, `react-native`などのパッケージを厳密にバージ�
 }
 ```
 
-#### Expo管理パッケージの判定方法
+#### Expo管理パッケージの判定
 
-**判定基準**: Expoが提供する `bundledNativeModules.json` に含まれるパッケージのみがcatalogに含めるべきです。
+**判定基準**: `expo/bundledNativeModules.json` に含まれるパッケージのみ
 
-このファイルは、Expo SDKが公式に管理しているネイティブモジュールの一覧を定義しており、`expo install`コマンドが互換性のあるバージョンを自動選択する際にも使用されます。
-
-#### なぜ `bundledNativeModules.json` を基準にするのか
-
-**このプロジェクトでの実装**
-
-このプロジェクトは、インストール済みのExpoパッケージから`node_modules/expo/bundledNativeModules.json`を直接読み込んでいます。これにより、Expo CLIが使用するのと**全く同じファイル**を参照することで、完全な整合性を保証しています。
+このプロジェクトは `node_modules/expo/bundledNativeModules.json` を直接読み込み、Expo CLIと同じ基準で判定します。
 
 ```typescript
 // scripts/shared/expo-utils.ts:23-25
@@ -146,30 +132,13 @@ return new Set(Object.keys(bundledModules));
 
 **Expo公式ツールも同じファイルを使用**
 
-Expo CLIツール群も、このプロジェクトと同じファイルを参照しています：
+- **`expo install`** - パッケージのバージョン解決に使用
+- **`expo start`** - 起動時に依存関係の整合性をチェック
+- **`expo-doctor`** - バージョン整合性チェック
 
-1. **`expo install`** - パッケージのバージョン解決に使用
-   - 実装: [validateDependenciesVersions.ts](https://github.com/expo/expo-cli/blob/34d972657bad805ca09bd3956eaad255445ae3de/packages/expo-cli/src/commands/utils/validateDependenciesVersions.ts)
-   - `getBundledNativeModulesAsync()`でSDK対応バージョンを取得
+**参考**: [expo/bundledNativeModules.json](https://github.com/expo/expo/blob/main/packages/expo/bundledNativeModules.json) - Expo公式リポジトリ
 
-2. **`expo start`** - 依存関係の検証に使用
-   - 実装: [Issue #599](https://github.com/expo/expo-cli/issues/599) / [PR #772](https://github.com/expo/expo-cli/pull/772)
-   - 2019年6月に実装：起動時に`bundledNativeModules.json`との整合性をチェック
-
-3. **`expo-doctor`** - バージョン整合性チェックのフォールバック
-   - API障害時のフォールバックとして`bundledNativeModules.json`を使用
-
-**参考リンク**
-
-- 公式ファイル: [expo/bundledNativeModules.json](https://github.com/expo/expo/blob/main/packages/expo/bundledNativeModules.json)
-- SDK 53には115+のパッケージが定義されている（react, react-native, expo-*, @react-native-*, コミュニティパッケージ）
-
-**採用理由**
-
-1. **公式との整合性**: Expo CLIと同じ情報源を使うことで、バージョン判定の一貫性を保証
-2. **高速**: 1回のファイル読み込みで115+パッケージをO(1)で判定（`expo install --check`の100回以上のCLI呼び出しと比較）
-3. **信頼性**: オフライン動作可能、CLIのバージョン間の違いに影響されない
-4. **自動更新**: SDK更新時に自動的に最新のパッケージリストが反映される
+これにより、Expo CLIとの完全な整合性を保証し、高速（O(1)）かつオフラインで動作します。
 
 ### ワークフロー
 
@@ -197,40 +166,15 @@ Expo CLIツール群も、このプロジェクトと同じファイルを参照
 
 **基本フロー**: `expo:sdk:sync` → `expo:sdk:fix` → `bun install` → `expo:sdk:validate`
 
-### 1. `bun run expo:sdk:detect`
-- **何をする**: catalog未定義のExpo管理パッケージを検出
-- **ファイル変更**: なし（レポートのみ）
-- **いつ使う**: 最初に。何が足りないか確認
-
-### 2. `bun run expo:fix`
-- **何をする**: Expoアプリで`expo install --fix`を実行
-- **ファイル変更**: `apps/expo/package.json` - 依存バージョンをSDK互換に自動修正
-- **いつ使う**: SDK更新後、パッケージ追加後
-
-### 3. `bun run expo:sdk:sync`
-- **何をする**: ExpoアプリのExpo管理パッケージをrootのcatalogに同期
-- **ファイル変更**: `package.json`（root） - `catalog`フィールドを更新/追加
-- **いつ使う**: expo:fix実行後
-
-### 4. `bun run expo:sdk:fix`
-- **何をする**: 他パッケージの具体的バージョンを`catalog:`に自動変換
-- **ファイル変更**: `packages/*/package.json` - 依存関係を`catalog:`に変換
-- **いつ使う**: expo:sdk:sync実行後
-
-### 5. `bun run expo:sdk:clean`
-- **何をする**: 未使用catalogエントリを削除
-- **ファイル変更**: `package.json`（root） - `catalog`から未使用エントリ削除
-- **いつ使う**: expo:sdk:fix実行後
-
-### 6. `bun run expo:sdk:validate`
-- **何をする**: 依存関係の整合性を検証（エラー検出）
-- **ファイル変更**: なし（検証のみ）
-- **いつ使う**: 変更後は必ず実行
-
-### 7. `bun run expo:doctor`
-- **何をする**: Expoアプリで`expo-doctor`を実行
-- **ファイル変更**: なし（チェックのみ）
-- **いつ使う**: 最終検証として（必ず実行）
+| スクリプト | 何をする | ファイル変更 | いつ使う |
+|-----------|---------|------------|---------|
+| `expo:sdk:detect` | catalog未定義を検出 | なし | 最初に |
+| `expo:fix` | `expo install --fix`実行 | `apps/expo/package.json` | SDK更新後 |
+| `expo:sdk:sync` | catalogに同期 | `root/catalog` | fix実行後 |
+| `expo:sdk:fix` | `catalog:`に変換 | `packages/*/package.json` | sync実行後 |
+| `expo:sdk:clean` | 未使用削除 | `root/catalog` | fix実行後 |
+| `expo:sdk:validate` | 整合性検証 | なし | 変更後必ず |
+| `expo:doctor` | 健全性チェック | なし | 最終検証 |
 
 ## 🚀 基本ワークフロー
 
@@ -303,32 +247,6 @@ bun run expo:doctor      # Expo検証（17/17チェック合格が理想）
 **Note**:
 - SDK 54以降へのアップグレード時は、Metro configの変更が必要な場合があります。トラブルシューティングセクションを参照してください。
 - `clean:lock`ステップは、expo-doctorの重複依存関係警告を解消するために重要です。
-
-## 🎯 設計原則
-
-### 1. expo:sdk:validate を起点とする
-
-常に`bun run expo:sdk:validate`から始め、エラーメッセージの指示に従う。
-
-### 2. ExpoアプリはExpo CLI経由のみ
-
-```bash
-# ✅ Good
-bunx expo install <package>
-
-# ❌ Bad - 手動編集しない
-# "expo-font": "~13.0.1" を直接編集
-```
-
-### 3. catalogは自動同期のみ
-
-```bash
-# ✅ Good
-bun run expo:sdk:sync
-
-# ❌ Bad - 手動編集しない
-# catalog に直接パッケージを追加
-```
 
 ## 🐛 トラブルシューティング
 
@@ -475,16 +393,6 @@ scripts/
   }
 }
 ```
-
-### セットアップ完了後
-
-ファイル配置が完了したら、上記の [🚀 基本ワークフロー](#-基本ワークフロー) セクションの「初回セットアップ」手順に従ってください。
-
-### 重要なルール
-
-- **Expo アプリ**: 具体的バージョンのみ（`catalog:` 使用禁止）
-- **他の packages**: Expo 管理パッケージは `catalog:` を使用
-- **カタログ**: Expo 管理パッケージのみ含める（`bundledNativeModules.json` 基準）
 
 ## 📄 ライセンス
 
