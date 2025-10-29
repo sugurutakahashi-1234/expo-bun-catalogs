@@ -215,7 +215,7 @@ Expo CLIツール群も、このプロジェクトと同じファイルを参照
 **なぜ必要**: catalogを綺麗に保つ
 **いつ使う**: fix:catalog実行後
 
-### 6. `bun run check:managed`
+### 6. `bun run validate:catalog`
 **何をする**: 依存関係の整合性を検証（エラー検出）
 **なぜ必要**: catalog化漏れやバージョン不整合を発見
 **いつ使う**: 変更後は必ず実行
@@ -225,14 +225,6 @@ Expo CLIツール群も、このプロジェクトと同じファイルを参照
 **なぜ必要**: 依存関係の健全性をExpo CLIでチェック
 **いつ使う**: 最終検証として（必ず実行）
 
----
-
-### 参考: その他のスクリプト
-
-| スクリプト | 説明 |
-|-----------|------|
-| `bun run expo:check` | `expo install --check`を実行（手動確認用） |
-
 ## 🚀 基本ワークフロー
 
 ### 初回セットアップ
@@ -241,14 +233,14 @@ Expo CLIツール群も、このプロジェクトと同じファイルを参照
 # 1. インストール
 bun install
 
-# 2-7. スクリプト実行（順番通り）
+# 2. スクリプト実行（順番通り）
 bun run detect:missing   # 不足確認
 bun run expo:fix         # Expo依存修正
 bun run sync:catalog     # catalog同期
 bun run fix:catalog      # catalog:変換
 bun run clean:catalog    # 未使用削除
 bun install              # 再インストール
-bun run check:managed    # 整合性検証
+bun run validate:catalog    # 整合性検証
 bun run expo:doctor      # Expo検証
 ```
 
@@ -262,12 +254,12 @@ bun run detect:missing
 # 2. Expoアプリに追加（Expo CLIで正しいバージョン取得）
 cd apps/expo && bunx expo install expo-font expo-image && cd ../..
 
-# 3-7. スクリプト実行
+# 3. スクリプト実行
 bun run sync:catalog     # catalog同期
 bun run fix:catalog      # catalog:変換
 bun run clean:catalog    # 未使用削除
 bun install              # 再インストール
-bun run check:managed    # 整合性検証
+bun run validate:catalog    # 整合性検証
 bun run expo:doctor      # Expo検証
 ```
 
@@ -286,7 +278,7 @@ cd apps/expo && bun install
 bunx expo install react-native-worklets
 cd ../..
 
-# 3-9. スクリプト実行
+# 3. スクリプト実行
 bun run expo:fix         # SDK互換バージョンに修正
 bun run sync:catalog     # catalog同期
 bun run fix:catalog      # catalog:変換
@@ -297,7 +289,7 @@ bun run clean:lock       # 全node_modules + bun.lock削除
 bun install              # クリーンインストール
 
 # 5. 検証
-bun run check:managed    # 整合性検証
+bun run validate:catalog    # 整合性検証
 bun run expo:doctor      # Expo検証（17/17チェック合格が理想）
 ```
 
@@ -307,9 +299,9 @@ bun run expo:doctor      # Expo検証（17/17チェック合格が理想）
 
 ## 🎯 設計原則
 
-### 1. check:managed を起点とする
+### 1. validate:catalog を起点とする
 
-常に`bun run check:managed`から始め、エラーメッセージの指示に従う。
+常に`bun run validate:catalog`から始め、エラーメッセージの指示に従う。
 
 ### 2. ExpoアプリはExpo CLI経由のみ
 
@@ -450,7 +442,7 @@ scripts/
     "expo:check": "bun run --cwd apps/expo check",
     "expo:doctor": "bun run --cwd apps/expo doctor",
     "sync:catalog": "bun run scripts/sync-expo-catalog.ts",
-    "check:managed": "bun run scripts/check-expo-managed.ts",
+    "validate:catalog": "bun run scripts/validate-catalog.ts",
     "detect:missing": "bun run scripts/detect-missing-packages.ts",
     "fix:catalog": "bun run scripts/fix-catalog-references.ts",
     "clean:catalog": "bun run scripts/clean-catalog.ts"
@@ -482,7 +474,7 @@ bun run sync:catalog      # カタログに同期
 bun run fix:catalog       # catalog: 参照に変換
 bun run clean:catalog     # 未使用エントリを削除
 bun install               # カタログで再インストール
-bun run check:managed     # 検証（必ずパス）
+bun run validate:catalog     # 検証（必ずパス）
 ```
 
 ### 重要なルール

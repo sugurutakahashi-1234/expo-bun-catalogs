@@ -24,7 +24,7 @@
     "next:build": "bun run --cwd apps/next build",
     "next:start": "bun run --cwd apps/next start",
     "sync:catalog": "bun run scripts/sync-expo-catalog.ts",
-    "check:managed": "bun run scripts/check-expo-managed.ts",
+    "validate:catalog": "bun run scripts/validate-catalog.ts",
     "check:deps": "bun run scripts/check-deps.ts",
     "detect:missing": "bun run scripts/detect-missing-packages.ts",
     "fix:catalog": "bun run scripts/fix-catalog-references.ts",
