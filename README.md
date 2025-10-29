@@ -174,13 +174,13 @@ Expo CLIツール群も、このプロジェクトと同じファイルを参照
 │ bunx expo install   │     expo install --fix
 │ (具体的バージョン)   │     expo-doctor
 └──────────┬──────────┘
-           │ sync:catalog
+           │ expo:sdk:sync
            ↓
 ┌─────────────────────┐
 │ root catalog        │  ← Expo管理パッケージのみ
 │ (バージョン一元管理) │
 └──────────┬──────────┘
-           │ fix:catalog
+           │ expo:sdk:fix
            ↓
 ┌─────────────────────┐
 │ packages/*          │  ← catalog: 参照
@@ -190,7 +190,7 @@ Expo CLIツール群も、このプロジェクトと同じファイルを参照
 
 ## 📋 スクリプト（実行順）
 
-### 1. `bun run detect:missing`
+### 1. `bun run expo:sdk:detect`
 **何をする**: catalog未定義のExpo管理パッケージを検出
 **なぜ必要**: 追加すべきパッケージを事前に把握
 **いつ使う**: 最初に。何が足りないか確認
@@ -200,22 +200,22 @@ Expo CLIツール群も、このプロジェクトと同じファイルを参照
 **なぜ必要**: Expo SDKと互換性のあるバージョンに自動修正
 **いつ使う**: SDK更新後、パッケージ追加後
 
-### 3. `bun run sync:catalog`
+### 3. `bun run expo:sdk:sync`
 **何をする**: ExpoアプリのExpo管理パッケージをrootのcatalogに同期
 **なぜ必要**: Expoアプリのバージョンをワークスペース全体に伝播
 **いつ使う**: expo:fix実行後
 
-### 4. `bun run fix:catalog`
+### 4. `bun run expo:sdk:fix`
 **何をする**: 他パッケージの具体的バージョンを`catalog:`に自動変換
 **なぜ必要**: ワークスペース全体でバージョンを統一
-**いつ使う**: sync:catalog実行後
+**いつ使う**: expo:sdk:sync実行後
 
-### 5. `bun run clean:catalog`
+### 5. `bun run expo:sdk:clean`
 **何をする**: 未使用catalogエントリを削除
 **なぜ必要**: catalogを綺麗に保つ
-**いつ使う**: fix:catalog実行後
+**いつ使う**: expo:sdk:fix実行後
 
-### 6. `bun run validate:catalog`
+### 6. `bun run expo:sdk:validate`
 **何をする**: 依存関係の整合性を検証（エラー検出）
 **なぜ必要**: catalog化漏れやバージョン不整合を発見
 **いつ使う**: 変更後は必ず実行
@@ -234,13 +234,13 @@ Expo CLIツール群も、このプロジェクトと同じファイルを参照
 bun install
 
 # 2. スクリプト実行（順番通り）
-bun run detect:missing   # 不足確認
+bun run expo:sdk:detect   # 不足確認
 bun run expo:fix         # Expo依存修正
-bun run sync:catalog     # catalog同期
-bun run fix:catalog      # catalog:変換
-bun run clean:catalog    # 未使用削除
+bun run expo:sdk:sync     # catalog同期
+bun run expo:sdk:fix      # catalog:変換
+bun run expo:sdk:clean    # 未使用削除
 bun install              # 再インストール
-bun run validate:catalog    # 整合性検証
+bun run expo:sdk:validate    # 整合性検証
 bun run expo:doctor      # Expo検証
 ```
 
@@ -248,18 +248,18 @@ bun run expo:doctor      # Expo検証
 
 ```bash
 # 1. 不足を検出
-bun run detect:missing
+bun run expo:sdk:detect
 # → 📦 expo-font, expo-image
 
 # 2. Expoアプリに追加（Expo CLIで正しいバージョン取得）
 cd apps/expo && bunx expo install expo-font expo-image && cd ../..
 
 # 3. スクリプト実行
-bun run sync:catalog     # catalog同期
-bun run fix:catalog      # catalog:変換
-bun run clean:catalog    # 未使用削除
+bun run expo:sdk:sync     # catalog同期
+bun run expo:sdk:fix      # catalog:変換
+bun run expo:sdk:clean    # 未使用削除
 bun install              # 再インストール
-bun run validate:catalog    # 整合性検証
+bun run expo:sdk:validate    # 整合性検証
 bun run expo:doctor      # Expo検証
 ```
 
@@ -280,16 +280,16 @@ cd ../..
 
 # 3. スクリプト実行
 bun run expo:fix         # SDK互換バージョンに修正
-bun run sync:catalog     # catalog同期
-bun run fix:catalog      # catalog:変換
-bun run clean:catalog    # 未使用削除
+bun run expo:sdk:sync     # catalog同期
+bun run expo:sdk:fix      # catalog:変換
+bun run expo:sdk:clean    # 未使用削除
 
 # 4. クリーンインストール（重複依存関係を解消）
 bun run clean:lock       # 全node_modules + bun.lock削除
 bun install              # クリーンインストール
 
 # 5. 検証
-bun run validate:catalog    # 整合性検証
+bun run expo:sdk:validate    # 整合性検証
 bun run expo:doctor      # Expo検証（17/17チェック合格が理想）
 ```
 
@@ -299,9 +299,9 @@ bun run expo:doctor      # Expo検証（17/17チェック合格が理想）
 
 ## 🎯 設計原則
 
-### 1. validate:catalog を起点とする
+### 1. expo:sdk:validate を起点とする
 
-常に`bun run validate:catalog`から始め、エラーメッセージの指示に従う。
+常に`bun run expo:sdk:validate`から始め、エラーメッセージの指示に従う。
 
 ### 2. ExpoアプリはExpo CLI経由のみ
 
@@ -317,7 +317,7 @@ bunx expo install <package>
 
 ```bash
 # ✅ Good
-bun run sync:catalog
+bun run expo:sdk:sync
 
 # ❌ Bad - 手動編集しない
 # catalog に直接パッケージを追加
@@ -329,7 +329,7 @@ bun run sync:catalog
 
 ```bash
 bun run expo:fix
-bun run sync:catalog
+bun run expo:sdk:sync
 bun install
 bun run expo:doctor
 ```
@@ -441,11 +441,11 @@ scripts/
     "expo:fix": "bun run --cwd apps/expo fix",
     "expo:check": "bun run --cwd apps/expo check",
     "expo:doctor": "bun run --cwd apps/expo doctor",
-    "sync:catalog": "bun run scripts/sync-expo-catalog.ts",
-    "validate:catalog": "bun run scripts/validate-catalog.ts",
-    "detect:missing": "bun run scripts/detect-missing-packages.ts",
-    "fix:catalog": "bun run scripts/fix-catalog-references.ts",
-    "clean:catalog": "bun run scripts/clean-catalog.ts"
+    "expo:sdk:sync": "bun run scripts/expo-sdk-sync-catalog.ts",
+    "expo:sdk:validate": "bun run scripts/expo-sdk-validate-catalog.ts",
+    "expo:sdk:detect": "bun run scripts/expo-sdk-detect-missing.ts",
+    "expo:sdk:fix": "bun run scripts/expo-sdk-fix-references.ts",
+    "expo:sdk:clean": "bun run scripts/expo-sdk-clean-catalog.ts"
   }
 }
 ```
@@ -468,13 +468,13 @@ scripts/
 
 ```bash
 bun install
-bun run detect:missing    # 不足パッケージを確認
+bun run expo:sdk:detect    # 不足パッケージを確認
 bun run expo:fix          # Expo バージョンを修正
-bun run sync:catalog      # カタログに同期
-bun run fix:catalog       # catalog: 参照に変換
-bun run clean:catalog     # 未使用エントリを削除
+bun run expo:sdk:sync      # カタログに同期
+bun run expo:sdk:fix       # catalog: 参照に変換
+bun run expo:sdk:clean     # 未使用エントリを削除
 bun install               # カタログで再インストール
-bun run validate:catalog     # 検証（必ずパス）
+bun run expo:sdk:validate     # 検証（必ずパス）
 ```
 
 ### 重要なルール
