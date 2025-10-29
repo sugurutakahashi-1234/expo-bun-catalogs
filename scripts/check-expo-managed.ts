@@ -195,38 +195,42 @@ console.log("\n" + "=".repeat(70));
 console.log("\n📋 Analysis Results:\n");
 
 // 問題を検出（ファイル単位でグループ化）
-type FileIssue = {
+type PackageStatus = {
   pkg: string;
+  hasError: boolean;
   messages: string[];
+  depType: string;
 };
 
-const issuesByFile = new Map<string, FileIssue[]>();
+const packagesByFile = new Map<string, PackageStatus[]>();
 
 for (const [pkg, usages] of allDeps.entries()) {
   const isManaged = expoManagedStatus.get(pkg) || false;
+
+  // Expo管理パッケージのみを対象
+  if (!isManaged) continue;
 
   for (const usage of usages) {
     const messages: string[] = [];
 
     // [ERROR 1] Expo管理対象なのにcatalogを使っていない
-    if (isManaged && !usage.isCatalog && usage.depType === "dependencies") {
+    if (!usage.isCatalog && usage.depType === "dependencies") {
       messages.push(`Should use "catalog:" but found "${usage.version}"`);
     }
 
     // [ERROR 2] Expo管理対象が devDependencies に配置されている（@types/* 以外）
     // peerDependencies は許容（React Native ライブラリの標準パターン）
-    if (isManaged && usage.depType === "devDependencies" && !pkg.startsWith("@types/")) {
+    if (usage.depType === "devDependencies" && !pkg.startsWith("@types/")) {
       messages.push(`Found in devDependencies, should be in dependencies`);
     }
 
     // [ERROR 3] catalogを参照しているがcatalog定義がない
-    if (isManaged && usage.isCatalog && !catalog[pkg]) {
+    if (usage.isCatalog && !catalog[pkg]) {
       messages.push(`Uses "catalog:" but not defined in root catalog`);
     }
 
     // [ERROR 4] catalogに定義があるがバージョンが異なる
     if (
-      isManaged &&
       !usage.isCatalog &&
       catalog[pkg] &&
       usage.version !== catalog[pkg] &&
@@ -235,45 +239,58 @@ for (const [pkg, usages] of allDeps.entries()) {
       messages.push(`Version mismatch with catalog: expected "${catalog[pkg]}"`);
     }
 
-    // エラーがあればファイル別にグループ化
-    if (messages.length > 0) {
-      if (!issuesByFile.has(usage.source)) {
-        issuesByFile.set(usage.source, []);
-      }
-
-      issuesByFile.get(usage.source)!.push({
-        pkg,
-        messages,
-      });
+    // ファイル別にグループ化（エラーの有無に関わらず）
+    if (!packagesByFile.has(usage.source)) {
+      packagesByFile.set(usage.source, []);
     }
+
+    packagesByFile.get(usage.source)!.push({
+      pkg,
+      hasError: messages.length > 0,
+      messages,
+      depType: usage.depType,
+    });
   }
 }
 
-// エラー表示
-if (issuesByFile.size > 0) {
-  const totalIssues = Array.from(issuesByFile.values()).reduce(
-    (sum, issues) => sum + issues.length,
-    0
-  );
+// 結果表示
+let totalIssues = 0;
+let totalCorrect = 0;
+let filesWithErrors = 0;
 
-  console.log(`❌ Found ${totalIssues} issue(s) in ${issuesByFile.size} file(s):\n`);
+// ファイルごとに表示
+for (const [file, packages] of packagesByFile.entries()) {
+  const hasErrors = packages.some((p) => p.hasError);
+  const fileIcon = hasErrors ? "❌" : "✅";
 
-  for (const [file, issues] of issuesByFile.entries()) {
-    console.log(`📄 ${file}`);
-    for (const issue of issues) {
-      const message = issue.messages.join(", ");
-      console.log(`  ❌ ${issue.pkg}: ${message}`);
+  if (hasErrors) filesWithErrors++;
+
+  console.log(`${fileIcon} ${file}`);
+
+  for (const status of packages) {
+    if (status.hasError) {
+      const message = status.messages.join(", ");
+      console.log(`  ❌ ${status.pkg}: ${message}`);
+      totalIssues++;
+    } else {
+      const depTypeLabel = status.depType !== "dependencies" ? ` (${status.depType})` : "";
+      console.log(`  ✅ ${status.pkg}: catalog${depTypeLabel}`);
+      totalCorrect++;
     }
-    console.log("");
   }
 
-  console.log("💡 Fix: Use \"catalog:\" for all Expo-managed packages in dependencies\n");
+  console.log("");
+}
 
+// サマリー表示
+console.log("─".repeat(70));
+if (totalIssues > 0) {
+  console.log(
+    `\n📊 Summary: ${totalIssues} issue(s) found in ${filesWithErrors} file(s), ${totalCorrect} packages correctly configured\n`
+  );
+  console.log("💡 Fix: Use \"catalog:\" for all Expo-managed packages in dependencies\n");
   process.exit(1);
 } else {
-  console.log("✅ All dependencies are correctly configured!\n");
-  console.log("Summary:");
-  console.log(`   - ${expoManagedStatus.size} unique dependencies checked`);
-  console.log(`   - ${Array.from(expoManagedStatus.values()).filter((v) => v).length} Expo-managed packages`);
-  console.log(`   - All using catalog correctly\n`);
+  console.log(`\n✅ All Expo-managed packages are correctly configured!`);
+  console.log(`📊 Summary: ${totalCorrect} packages using catalog correctly\n`);
 }
