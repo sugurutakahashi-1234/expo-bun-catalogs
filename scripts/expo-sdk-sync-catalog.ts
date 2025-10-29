@@ -33,13 +33,13 @@ type CatalogUpdate = {
 async function syncExpoCatalog() {
   console.log("🔄 Syncing Expo-managed packages to catalog...\n");
 
-  // 1. Read root package.json
+  // 1. root package.json を読み込み
   const rootPkg = await getRootPackageJson();
 
-  // 2. Find all package.json files in workspace
+  // 2. ワークスペース内の全 package.json を検索
   const packageJsonFiles = await findPackageJsonFiles(rootPkg);
 
-  // 3. Dynamically find Expo app
+  // 3. Expo アプリを動的に検出
   const expoAppPath = await findExpoApp(packageJsonFiles);
 
   if (!expoAppPath) {
@@ -63,13 +63,13 @@ async function syncExpoCatalog() {
   }
   const catalog = rootPkg.catalog || {};
 
-  // 4. Get all dependencies from Expo app (dependencies + devDependencies)
+  // 4. Expo アプリの全依存関係を取得 (dependencies + devDependencies)
   const expoDeps: Record<string, string> = {
     ...expoAppPkg.dependencies,
     ...expoAppPkg.devDependencies,
   };
 
-  // Filter out workspace: and catalog: references
+  // workspace: と catalog: 参照を除外
   const expoPackages = Object.entries(expoDeps)
     .filter(
       ([_, version]) =>
@@ -84,7 +84,7 @@ async function syncExpoCatalog() {
     process.exit(0);
   }
 
-  // 5. Check which are Expo-managed and update catalog
+  // 5. Expo管理パッケージを判定してcatalogを更新
   const updates: CatalogUpdate[] = [];
 
   for (const { name, version } of expoPackages) {
@@ -117,7 +117,7 @@ async function syncExpoCatalog() {
     }
   }
 
-  // 6. Validate catalog integrity: Check if any non-Expo-managed packages are in catalog
+  // 6. catalogの整合性を検証: Expo管理外パッケージがcatalogに含まれていないかチェック
   console.log("\n🔍 Validating catalog integrity...\n");
   const nonManagedInCatalog = await validateCatalogIntegrity(catalog, expoAppPath);
 
@@ -130,7 +130,7 @@ async function syncExpoCatalog() {
     }
   }
 
-  // 7. Check for packages in catalog that are no longer in Expo app
+  // 7. Expoアプリに存在しないcatalogエントリをチェック
   const removedPackages: string[] = [];
   for (const [pkg] of Object.entries(catalog)) {
     if (!expoDeps[pkg]) {
@@ -138,7 +138,7 @@ async function syncExpoCatalog() {
     }
   }
 
-  // 7. Report and confirm
+  // 8. 結果を報告
   console.log("\n" + "=".repeat(70));
   console.log("\n📊 Catalog Sync Summary:\n");
 
@@ -170,7 +170,7 @@ async function syncExpoCatalog() {
     console.log("   (These will NOT be removed automatically)\n");
   }
 
-  // 8. Write updated root package.json
+  // 9. 更新された root package.json を書き込み
   if (added.length > 0 || updated.length > 0) {
     rootPkg.catalog = catalog;
     await Bun.write("./package.json", JSON.stringify(rootPkg, null, 2) + "\n");

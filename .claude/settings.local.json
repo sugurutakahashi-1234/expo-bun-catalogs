@@ -5,7 +5,8 @@
       "Bash(expo install:*)",
       "Bash(bunx expo:*)",
       "Bash(bunx expo-doctor:*)",
-      "Bash(readlink:*)"
+      "Bash(readlink:*)",
+      "Bash(do echo \"=== $file ===\")"
     ],
     "deny": [],
     "ask": []

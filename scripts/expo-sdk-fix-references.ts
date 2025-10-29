@@ -21,7 +21,7 @@ import {
 
 console.log("🔧 Fixing catalog references for Expo-managed packages...\n");
 
-// 1. Get Expo managed packages list from bundledNativeModules.json
+// 1. bundledNativeModules.json から Expo管理パッケージのリストを取得
 const rootPkg = await getRootPackageJson(process.cwd());
 const packageJsonFiles = await findPackageJsonFiles(rootPkg);
 const expoAppPath = await findExpoApp(packageJsonFiles);
@@ -35,7 +35,7 @@ const expoAppDir = expoAppPath.replace(process.cwd() + "/", "");
 const expoAppPkgPath = `${expoAppPath}/package.json`;
 console.log(`🎯 Expo app detected: ${expoAppDir}\n`);
 
-// Read bundledNativeModules.json to get Expo-managed packages
+// bundledNativeModules.json を読み込んで Expo管理パッケージを取得
 const bundledModulesPath = `${expoAppPath}/node_modules/expo/bundledNativeModules.json`;
 let expoManagedPackages: Set<string>;
 
@@ -49,12 +49,12 @@ try {
   process.exit(1);
 }
 
-// 2. Process all package.json files except Expo app
+// 2. Expoアプリを除く全 package.json を処理
 let totalFixed = 0;
 const fixedFiles: string[] = [];
 
 for (const pkgPath of packageJsonFiles) {
-  // Skip Expo app (it should use concrete versions)
+  // Expoアプリはスキップ（具体的バージョンを使用すべき）
   if (pkgPath === expoAppPkgPath) {
     continue;
   }
@@ -63,19 +63,19 @@ for (const pkgPath of packageJsonFiles) {
     const pkgJson: PackageJson = await Bun.file(pkgPath).json();
     let hasChanges = false;
 
-    // Check dependencies and devDependencies
+    // dependencies と devDependencies をチェック
     for (const depType of ["dependencies", "devDependencies"] as const) {
       const deps = pkgJson[depType];
       if (!deps) continue;
 
       for (const [name, version] of Object.entries(deps)) {
-        // Skip if already using catalog: or workspace:
+        // すでに catalog: または workspace: を使用している場合はスキップ
         if (
           typeof version === "string" &&
           !version.startsWith("catalog:") &&
           !version.startsWith("workspace:")
         ) {
-          // Check if this is an Expo-managed package
+          // Expo管理パッケージかチェック
           if (expoManagedPackages.has(name)) {
             deps[name] = "catalog:";
             hasChanges = true;

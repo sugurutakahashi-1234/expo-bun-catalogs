@@ -22,7 +22,7 @@ import {
 
 console.log("🧹 Cleaning unused catalog entries...\n");
 
-// 1. Read root package.json and get catalog
+// 1. root package.json を読み込み、catalogを取得
 const rootPkg = await getRootPackageJson(process.cwd());
 const catalog = rootPkg.catalog || {};
 const catalogEntries = Object.keys(catalog);
@@ -34,17 +34,17 @@ if (catalogEntries.length === 0) {
 
 console.log(`📦 Found ${catalogEntries.length} catalog entries\n`);
 
-// 2. Find all package.json files in workspace
+// 2. ワークスペース内の全 package.json を検索
 const packageJsonFiles = await findPackageJsonFiles(rootPkg);
 
-// 3. Track which catalog entries are used
+// 3. 使用されている catalog エントリを追跡
 const usedCatalogEntries = new Set<string>();
 
 for (const pkgPath of packageJsonFiles) {
   try {
     const pkgJson: PackageJson = await Bun.file(pkgPath).json();
 
-    // Check all dependency types
+    // 全依存関係タイプをチェック
     for (const depType of ["dependencies", "devDependencies", "peerDependencies"] as const) {
       const deps = pkgJson[depType];
       if (!deps) continue;
@@ -56,11 +56,11 @@ for (const pkgPath of packageJsonFiles) {
       }
     }
   } catch (error) {
-    // Skip unreadable files
+    // 読み込めないファイルはスキップ
   }
 }
 
-// 4. Find unused catalog entries
+// 4. 未使用の catalog エントリを検出
 const unusedEntries: string[] = [];
 
 for (const catalogPkg of catalogEntries) {
@@ -83,7 +83,7 @@ if (unusedEntries.length > 0) {
     console.log(`   - ${entry}: ${catalog[entry]}`);
   }
 
-  // 5. Remove unused entries
+  // 5. 未使用エントリを削除
   console.log("\n🗑️  Removing unused entries from catalog...\n");
 
   for (const entry of unusedEntries) {
@@ -91,7 +91,7 @@ if (unusedEntries.length > 0) {
     console.log(`   ✓ Removed: ${entry}`);
   }
 
-  // 6. Save updated root package.json
+  // 6. 更新された root package.json を保存
   rootPkg.catalog = catalog;
   await Bun.write("./package.json", JSON.stringify(rootPkg, null, 2) + "\n");
 
