@@ -31,9 +31,7 @@
     "check:deps": "bun run scripts/check-deps.ts",
     "detect:missing": "bun run scripts/detect-missing-packages.ts",
     "fix:catalog": "bun run scripts/fix-catalog-references.ts",
-    "clean:catalog": "bun run scripts/clean-catalog.ts",
-    "fix:all": "bun run expo:fix && bun run sync:catalog && bun install",
-    "why:rn": "bun pm why react-native"
+    "clean:catalog": "bun run scripts/clean-catalog.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

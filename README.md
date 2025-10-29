@@ -232,8 +232,6 @@ Expo CLIツール群も、このプロジェクトと同じファイルを参照
 | スクリプト | 説明 |
 |-----------|------|
 | `bun run expo:check` | `expo install --check`を実行（手動確認用） |
-| `bun run fix:all` | expo:fix + sync:catalog + bun install を一括実行 |
-| `bun run why:rn` | react-nativeパッケージの依存ツリーを表示 |
 
 ## 🚀 基本ワークフロー
 
