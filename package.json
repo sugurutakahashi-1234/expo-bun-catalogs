@@ -35,8 +35,6 @@
     "restore:catalog": "bun run scripts/restore-catalog.ts",
     "check:managed": "bun run scripts/check-expo-managed.ts",
     "check:deps": "bun run scripts/check-deps.ts",
-    "list:expo": "bun run scripts/list-expo-packages.ts",
-    "debug:expo": "bun run scripts/debug-expo-check.ts",
     "why:rn": "bun pm why react-native"
   },
   "devDependencies": {
