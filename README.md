@@ -79,11 +79,12 @@ $ bun run check:managed
 - apps/expoは具体的バージョン使用
 - 他パッケージはcatalog:参照使用
 
-### 修正スクリプト
+### 同期・修正スクリプト
 
 | スクリプト | 説明 |
 |-----------|------|
-| `bun run sync:catalog` | apps/expo → root catalog へ同期 |
+| `bun run detect:missing` | catalogに不足しているExpo管理パッケージを検出 |
+| `bun run sync:catalog` | Expo app → root catalog へ同期 |
 | `bun run fix:catalog` | 具体的バージョン → `catalog:` に変換 |
 | `bun run clean:catalog` | 未使用catalogエントリを削除 |
 
@@ -99,6 +100,24 @@ $ bun run check:managed
 ## 📋 典型的なワークフロー
 
 ### 新しいExpo管理パッケージを追加
+
+**方法1: detect:missingで検出してから追加**
+
+```bash
+# 1. 不足しているパッケージを検出
+bun run detect:missing
+# → 📦 expo-font, expo-image
+
+# 2. 出力されたコマンドを実行
+cd apps/expo && bunx expo install expo-font expo-image && cd ../..
+
+# 3. 同期・変換
+bun run sync:catalog
+bun run fix:catalog
+bun install
+```
+
+**方法2: check:managedで検証しながら追加**
 
 ```bash
 # 1. 検証して問題を発見

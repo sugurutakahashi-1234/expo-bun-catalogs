@@ -1,4 +1,23 @@
 #!/usr/bin/env bun
+/**
+ * Expo管理パッケージの依存関係チェック
+ *
+ * 目的:
+ *   Expo管理パッケージがモノレポワークスペース全体で正しいバージョン管理戦略に
+ *   従っているかを検証する。
+ *
+ * 主要概念:
+ *   - Expo管理: expo/bundledNativeModules.jsonに定義されているパッケージ
+ *   - Catalog: Bunのcatalog機能を使った一元的なバージョン管理
+ *   - Source of Truth: ExpoアプリはExpo CLIが管理する具体的バージョンを使用
+ *   - その他パッケージ: catalog:プロトコルでcatalogを参照すべき
+ *
+ * 検証ルール:
+ *   1. Expo管理パッケージのみがcatalogに含まれるべき
+ *   2. Expoアプリは具体的バージョンを使用すべき（catalog:不可）
+ *   3. その他パッケージはExpo管理パッケージにcatalog:を使用すべき
+ *   4. catalogのエントリはExpoアプリのバージョンと一致すべき
+ */
 import {
   type PackageJson,
   type DependencyType,
@@ -93,14 +112,15 @@ if (!expoAppPath) {
   process.exit(1);
 }
 
-console.log(`🎯 Using Expo app: ${expoAppPath}\n`);
+const expoAppDir = expoAppPath.replace(process.cwd() + "/", "");
+console.log(`🎯 Using Expo app: ${expoAppDir}\n`);
 
-// apps/expo/package.json を読み込んでバージョン情報を取得
+// Expo app の package.json を読み込んでバージョン情報を取得
 const expoAppPkgPath = `${expoAppPath}/package.json`;
 const expoAppPkg: PackageJson = await Bun.file(expoAppPkgPath).json();
 const expoAppVersions = new Map<string, string>();
 
-// apps/expo の全依存関係のバージョンを記録
+// Expo app の全依存関係のバージョンを記録
 for (const depType of ["dependencies", "devDependencies"] as DependencyType[]) {
   const deps = expoAppPkg[depType] || {};
   for (const [name, version] of Object.entries(deps)) {
@@ -164,7 +184,7 @@ for (const [pkg, usages] of allDeps.entries()) {
     // Expo管理パッケージの検証
     if (isManaged) {
       if (isExpoApp) {
-        // ===== apps/expo/package.json の検証 =====
+        // ===== Expo app の検証 =====
         // [ERROR] Expo管理パッケージは具体的なバージョンを使用すべき
         if (usage.isCatalog && usage.depType === "dependencies") {
           messages.push(`Expo-managed package must use concrete version, found "catalog:"`);
@@ -182,17 +202,17 @@ for (const [pkg, usages] of allDeps.entries()) {
             messages.push(
               `Expo-managed package must use "catalog:", but "${pkg}" is not defined in root catalog`
             );
-            messages.push(`Action: Add "${pkg}" to apps/expo/package.json and run "bun run sync:catalog"`);
+            messages.push(`Action: Add "${pkg}" to ${expoAppDir}/package.json and run "bun run sync:catalog"`);
           } else {
             messages.push(`Expo-managed package must use "catalog:", found "${usage.version}"`);
           }
         }
 
-        // [WARNING] 具体的なバージョンがapps/expoと異なる
+        // [WARNING] 具体的なバージョンがExpo appと異なる
         if (!usage.isCatalog && usage.depType === "dependencies") {
           const expoVersion = expoAppVersions.get(pkg);
           if (expoVersion && usage.version !== expoVersion) {
-            warnings.push(`Version ${usage.version} differs from apps/expo ${expoVersion}`);
+            warnings.push(`Version ${usage.version} differs from Expo app ${expoVersion}`);
           }
         }
 
@@ -337,10 +357,10 @@ if (totalErrorsIncludingCatalog > 0) {
   if (catalogIntegrityErrors > 0) {
     console.log("   1. Remove non-Expo-managed packages from root package.json catalog");
   }
-  console.log("   2. For apps/expo: Use concrete versions for Expo-managed packages");
+  console.log(`   2. For ${expoAppDir}: Use concrete versions for Expo-managed packages`);
   console.log("   3. For other packages: Use \"catalog:\" for Expo-managed packages");
   console.log("   4. Remove unused catalog entries from package.json");
-  console.log("   5. Run: bun run sync:catalog (after fixing apps/expo)\n");
+  console.log(`   5. Run: bun run sync:catalog (after fixing ${expoAppDir})\n`);
   process.exit(1);
 } else if (totalWarnings > 0) {
   console.log(

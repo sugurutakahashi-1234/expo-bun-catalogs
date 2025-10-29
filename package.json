@@ -29,6 +29,7 @@
     "sync:catalog": "bun run scripts/sync-expo-catalog.ts",
     "check:managed": "bun run scripts/check-expo-managed.ts",
     "check:deps": "bun run scripts/check-deps.ts",
+    "detect:missing": "bun run scripts/detect-missing-packages.ts",
     "fix:catalog": "bun run scripts/fix-catalog-references.ts",
     "clean:catalog": "bun run scripts/clean-catalog.ts",
     "fix:all": "bun run expo:fix && bun run sync:catalog && bun install",

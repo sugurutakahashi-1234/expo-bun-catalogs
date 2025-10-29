@@ -17,8 +17,21 @@ type CatalogUpdate = {
   action: "added" | "updated" | "unchanged";
 };
 
+/**
+ * Expo管理パッケージのカタログ同期
+ *
+ * 目的:
+ *   ExpoアプリからExpo管理パッケージのバージョンをrootのcatalogに同期し、
+ *   ワークスペース全体で一貫したバージョン管理を保証する。
+ *
+ * 動作:
+ *   1. ワークスペース内のExpoアプリを検出（expoの依存を持つ）
+ *   2. 全Expo管理パッケージを抽出（bundledNativeModules.jsonから）
+ *   3. Expoアプリのバージョンでrootのcatalogを更新
+ *   4. catalogの整合性を検証（Expo管理パッケージのみ）
+ */
 async function syncExpoCatalog() {
-  console.log("🔄 Syncing Expo catalog from Expo app...\n");
+  console.log("🔄 Syncing Expo-managed packages to catalog...\n");
 
   // 1. Read root package.json
   const rootPkg = await getRootPackageJson();
@@ -35,7 +48,8 @@ async function syncExpoCatalog() {
     process.exit(1);
   }
 
-  console.log(`🎯 Using Expo app: ${expoAppPath}\n`);
+  const expoAppDir = expoAppPath.replace(process.cwd() + "/", "");
+  console.log(`🎯 Expo app detected: ${expoAppDir}\n`);
 
   const expoAppPkgPath = `${expoAppPath}/package.json`;
 

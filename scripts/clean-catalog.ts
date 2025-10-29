@@ -1,4 +1,17 @@
 #!/usr/bin/env bun
+/**
+ * 未使用カタログエントリのクリーンアップ
+ *
+ * 目的:
+ *   どのワークスペースパッケージからも参照されていないcatalogエントリを削除する。
+ *   catalogを綺麗で保守しやすい状態に保つ。
+ *
+ * 動作:
+ *   1. 全ワークスペースパッケージをスキャンし使用されているcatalogエントリを特定
+ *   2. 参照のないcatalogエントリを識別
+ *   3. rootのpackage.jsonのcatalogから未使用エントリを削除
+ *   4. クリーンアップ内容を報告
+ */
 import {
   type PackageJson,
   getRootPackageJson,

@@ -1,4 +1,17 @@
 #!/usr/bin/env bun
+/**
+ * カタログ参照の自動修正
+ *
+ * 目的:
+ *   ワークスペースパッケージ（Expoアプリを除く）内の全Expo管理パッケージの
+ *   具体的バージョン文字列を自動的に'catalog:'プロトコルに変換する。
+ *
+ * 動作:
+ *   1. bundledNativeModules.jsonを読み込みExpo管理パッケージを特定
+ *   2. 全ワークスペースパッケージをスキャン（Expoアプリを除く）
+ *   3. Expo管理パッケージの具体的バージョンを'catalog:'に変換
+ *   4. 非Expo管理パッケージとworkspace:参照はそのまま維持
+ */
 import {
   type PackageJson,
   getRootPackageJson,
@@ -18,8 +31,9 @@ if (!expoAppPath) {
   process.exit(1);
 }
 
+const expoAppDir = expoAppPath.replace(process.cwd() + "/", "");
 const expoAppPkgPath = `${expoAppPath}/package.json`;
-console.log(`🎯 Using Expo app: ${expoAppPath}\n`);
+console.log(`🎯 Expo app detected: ${expoAppDir}\n`);
 
 // Read bundledNativeModules.json to get Expo-managed packages
 const bundledModulesPath = `${expoAppPath}/node_modules/expo/bundledNativeModules.json`;
@@ -35,12 +49,12 @@ try {
   process.exit(1);
 }
 
-// 2. Process all package.json files except apps/expo
+// 2. Process all package.json files except Expo app
 let totalFixed = 0;
 const fixedFiles: string[] = [];
 
 for (const pkgPath of packageJsonFiles) {
-  // Skip apps/expo (it should use concrete versions)
+  // Skip Expo app (it should use concrete versions)
   if (pkgPath === expoAppPkgPath) {
     continue;
   }
