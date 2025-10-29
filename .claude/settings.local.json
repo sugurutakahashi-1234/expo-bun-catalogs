@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(bunx expo install:*)"
+      "Bash(bunx expo install:*)",
+      "Bash(expo install:*)"
     ],
     "deny": [],
     "ask": []
