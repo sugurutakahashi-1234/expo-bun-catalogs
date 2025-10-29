@@ -1,0 +1,41 @@
+{
+  "name": "expo-bun-catalogs",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "bun@1.3.1",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "catalog": {
+    "expo": "~53.0.0",
+    "expo-status-bar": "~2.0.0",
+    "react": "18.3.1",
+    "react-native": "0.76.5",
+    "react-native-gesture-handler": "~2.20.2",
+    "react-native-reanimated": "~3.16.1",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.1.0",
+    "@react-navigation/native": "^7.0.0",
+    "@types/react": "~18.3.12"
+  },
+  "overrides": {
+    "react": "18.3.1",
+    "react-native": "0.76.5",
+    "react-native-reanimated": "~3.16.1",
+    "react-native-gesture-handler": "~2.20.2"
+  },
+  "scripts": {
+    "fix:expo": "bunx expo install --fix -C apps/expo",
+    "check:expo": "bunx expo install --check -C apps/expo",
+    "doctor": "bunx expo-doctor -C apps/expo",
+    "why:rn": "bun pm why react-native",
+    "check:deps": "bun run scripts/check-deps.ts",
+    "check:managed": "bun run scripts/check-expo-managed.ts",
+    "list:expo": "bun run scripts/list-expo-packages.ts",
+    "debug:expo": "bun run scripts/debug-expo-check.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

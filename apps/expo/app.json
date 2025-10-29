@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "expo-bun-catalogs",
+    "slug": "expo-bun-catalogs",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.expobuncatalogs"
+    },
+    "android": {
+      "package": "com.example.expobuncatalogs"
+    },
+    "web": {}
+  }
+}

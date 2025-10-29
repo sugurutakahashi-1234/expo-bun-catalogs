@@ -1,0 +1,26 @@
+{
+  "name": "@app/expo",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "expo": "catalog:",
+    "expo-status-bar": "catalog:",
+    "react": "catalog:",
+    "react-native": "catalog:",
+    "react-native-gesture-handler": "catalog:",
+    "react-native-reanimated": "catalog:",
+    "react-native-safe-area-context": "catalog:",
+    "react-native-screens": "catalog:",
+    "@react-navigation/native": "catalog:",
+    "@packages/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:"
+  }
+}
