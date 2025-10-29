@@ -9,6 +9,7 @@ import {
   isCatalogReference,
   isWorkspaceReference,
   isTypesPackage,
+  validateCatalogIntegrity,
 } from "./shared/expo-utils";
 
 console.log("🔍 Analyzing workspace dependencies and catalog usage...\n");
@@ -124,7 +125,22 @@ for (const pkg of uniquePackages) {
   process.stdout.write(`\r   ${isManaged ? "✅" : "  "} ${pkg.padEnd(50)} ${status}\n`);
 }
 
-console.log("\n" + "=".repeat(70));
+// Catalog整合性チェック: catalogに非Expo管理パッケージがないか検証
+console.log("\n🔍 Validating catalog integrity...\n");
+const nonManagedInCatalog = await validateCatalogIntegrity(catalog, expoAppPath);
+
+if (nonManagedInCatalog.length > 0) {
+  console.log("❌ Catalog Integrity Violations Found:\n");
+  for (const pkg of nonManagedInCatalog) {
+    console.log(`   ❌ ${pkg}: NOT Expo-managed`);
+    console.log(`      Principle: Only Expo-managed packages should be in the catalog`);
+    console.log(`      Action: Remove "${pkg}" from root package.json catalog field\n`);
+  }
+} else {
+  console.log("✅ All catalog entries are Expo-managed packages\n");
+}
+
+console.log("=".repeat(70));
 console.log("\n📋 Analysis Results:\n");
 
 // 問題を検出（ファイル単位でグループ化）
@@ -301,15 +317,23 @@ for (const [file, packages] of packagesByFile.entries()) {
 
 // サマリー表示
 console.log("─".repeat(70));
-if (totalErrors > 0) {
+
+// Catalog整合性違反もエラーとしてカウント
+const catalogIntegrityErrors = nonManagedInCatalog.length;
+const totalErrorsIncludingCatalog = totalErrors + catalogIntegrityErrors;
+
+if (totalErrorsIncludingCatalog > 0) {
   console.log(
-    `\n📊 Summary: ${totalErrors} error(s) in ${filesWithErrors} file(s), ${totalWarnings} warning(s)\n`
+    `\n📊 Summary: ${totalErrorsIncludingCatalog} error(s) in ${filesWithErrors + (catalogIntegrityErrors > 0 ? 1 : 0)} file(s), ${totalWarnings} warning(s)\n`
   );
   console.log("💡 Fix suggestions:");
-  console.log("   1. For apps/expo: Use concrete versions for Expo-managed packages");
-  console.log("   2. For other packages: Use \"catalog:\" for Expo-managed packages");
-  console.log("   3. Remove unused catalog entries from package.json");
-  console.log("   4. Run: bun run sync:catalog (after fixing apps/expo)\n");
+  if (catalogIntegrityErrors > 0) {
+    console.log("   1. Remove non-Expo-managed packages from root package.json catalog");
+  }
+  console.log("   2. For apps/expo: Use concrete versions for Expo-managed packages");
+  console.log("   3. For other packages: Use \"catalog:\" for Expo-managed packages");
+  console.log("   4. Remove unused catalog entries from package.json");
+  console.log("   5. Run: bun run sync:catalog (after fixing apps/expo)\n");
   process.exit(1);
 } else if (totalWarnings > 0) {
   console.log(

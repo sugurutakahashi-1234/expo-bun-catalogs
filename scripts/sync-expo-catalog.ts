@@ -7,6 +7,7 @@ import {
   isExpoManaged,
   isWorkspaceReference,
   isCatalogReference,
+  validateCatalogIntegrity,
 } from "./shared/expo-utils";
 
 type CatalogUpdate = {
@@ -97,12 +98,25 @@ async function syncExpoCatalog() {
       );
     } else {
       process.stdout.write(
-        `\r   ⚪ ${name.padEnd(50)} (not Expo-managed, skipped)\n`
+        `\r   ⚪ ${name.padEnd(50)} (not Expo-managed, use concrete version)\n`
       );
     }
   }
 
-  // 6. Check for packages in catalog that are no longer in Expo app
+  // 6. Validate catalog integrity: Check if any non-Expo-managed packages are in catalog
+  console.log("\n🔍 Validating catalog integrity...\n");
+  const nonManagedInCatalog = await validateCatalogIntegrity(catalog, expoAppPath);
+
+  if (nonManagedInCatalog.length > 0) {
+    console.log("⚠️  Warning: Non-Expo-managed packages found in catalog:\n");
+    for (const pkg of nonManagedInCatalog) {
+      console.log(`   ⚠️  ${pkg}: NOT Expo-managed`);
+      console.log(`      Principle: Only Expo-managed packages should be in the catalog`);
+      console.log(`      Action: Remove "${pkg}" from root package.json catalog field\n`);
+    }
+  }
+
+  // 7. Check for packages in catalog that are no longer in Expo app
   const removedPackages: string[] = [];
   for (const [pkg] of Object.entries(catalog)) {
     if (!expoDeps[pkg]) {

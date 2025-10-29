@@ -14,14 +14,44 @@ export type PackageJson = {
 export type DependencyType = "dependencies" | "devDependencies" | "peerDependencies";
 
 /**
+ * Get the list of Expo SDK managed packages from bundledNativeModules.json
+ * @param expoAppPath Path to Expo app directory
+ * @returns Set of package names managed by Expo SDK
+ */
+async function getManagedPackagesList(expoAppPath: string): Promise<Set<string>> {
+  try {
+    const bundledModulesPath = `${expoAppPath}/node_modules/expo/bundledNativeModules.json`;
+    const bundledModules = await Bun.file(bundledModulesPath).json();
+    return new Set(Object.keys(bundledModules));
+  } catch (error) {
+    console.warn("⚠️  Could not read expo/bundledNativeModules.json, falling back to CLI check");
+    return new Set();
+  }
+}
+
+// Cache for managed packages list to avoid repeated file reads
+let managedPackagesCache: { path: string; packages: Set<string> } | null = null;
+
+/**
  * Check if a package is managed by Expo SDK
  * @param pkg Package name to check
  * @param expoAppPath Path to Expo app directory
  * @returns true if package is Expo-managed
  */
 export async function isExpoManaged(pkg: string, expoAppPath: string): Promise<boolean> {
-  const originalCwd = process.cwd();
+  // Use cached list if available for same path
+  if (!managedPackagesCache || managedPackagesCache.path !== expoAppPath) {
+    const packages = await getManagedPackagesList(expoAppPath);
+    managedPackagesCache = { path: expoAppPath, packages };
+  }
 
+  // If we have the list from bundledNativeModules.json, use it
+  if (managedPackagesCache.packages.size > 0) {
+    return managedPackagesCache.packages.has(pkg);
+  }
+
+  // Fallback: Use expo install --check (old method)
+  const originalCwd = process.cwd();
   try {
     process.chdir(expoAppPath);
     await $`bunx expo install ${pkg} --check`.quiet();
@@ -137,4 +167,26 @@ export function isWorkspaceReference(version: string): boolean {
  */
 export function isTypesPackage(pkg: string): boolean {
   return pkg.startsWith("@types/");
+}
+
+/**
+ * Validate that all catalog entries are Expo-managed packages
+ * @param catalog Catalog object from root package.json
+ * @param expoAppPath Path to Expo app directory
+ * @returns Array of non-Expo-managed packages found in catalog
+ */
+export async function validateCatalogIntegrity(
+  catalog: Record<string, string>,
+  expoAppPath: string
+): Promise<string[]> {
+  const nonManagedPackages: string[] = [];
+
+  for (const pkg of Object.keys(catalog)) {
+    const isManaged = await isExpoManaged(pkg, expoAppPath);
+    if (!isManaged) {
+      nonManagedPackages.push(pkg);
+    }
+  }
+
+  return nonManagedPackages;
 }
