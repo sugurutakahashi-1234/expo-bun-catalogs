@@ -126,6 +126,46 @@ Expo SDKは`react`, `react-native`などのパッケージを厳密にバージ�
 
 **判定基準**: `expo/bundledNativeModules.json`に含まれるパッケージのみ
 
+#### なぜ `bundledNativeModules.json` を基準にするのか
+
+**このプロジェクトでの実装**
+
+このプロジェクトは、インストール済みのExpoパッケージから`node_modules/expo/bundledNativeModules.json`を直接読み込んでいます。これにより、Expo CLIが使用するのと**全く同じファイル**を参照することで、完全な整合性を保証しています。
+
+```typescript
+// scripts/shared/expo-utils.ts:23-25
+const bundledModulesPath = `${expoAppPath}/node_modules/expo/bundledNativeModules.json`;
+const bundledModules = await Bun.file(bundledModulesPath).json();
+return new Set(Object.keys(bundledModules));
+```
+
+**Expo公式ツールも同じファイルを使用**
+
+Expo CLIツール群も、このプロジェクトと同じファイルを参照しています：
+
+1. **`expo install`** - パッケージのバージョン解決に使用
+   - 実装: [validateDependenciesVersions.ts](https://github.com/expo/expo-cli/blob/34d972657bad805ca09bd3956eaad255445ae3de/packages/expo-cli/src/commands/utils/validateDependenciesVersions.ts)
+   - `getBundledNativeModulesAsync()`でSDK対応バージョンを取得
+
+2. **`expo start`** - 依存関係の検証に使用
+   - 実装: [Issue #599](https://github.com/expo/expo-cli/issues/599) / [PR #772](https://github.com/expo/expo-cli/pull/772)
+   - 2019年6月に実装：起動時に`bundledNativeModules.json`との整合性をチェック
+
+3. **`expo-doctor`** - バージョン整合性チェックのフォールバック
+   - API障害時のフォールバックとして`bundledNativeModules.json`を使用
+
+**参考リンク**
+
+- 公式ファイル: [expo/bundledNativeModules.json](https://github.com/expo/expo/blob/main/packages/expo/bundledNativeModules.json)
+- SDK 53には115+のパッケージが定義されている（react, react-native, expo-*, @react-native-*, コミュニティパッケージ）
+
+**採用理由**
+
+1. **公式との整合性**: Expo CLIと同じ情報源を使うことで、バージョン判定の一貫性を保証
+2. **高速**: 1回のファイル読み込みで115+パッケージをO(1)で判定（`expo install --check`の100回以上のCLI呼び出しと比較）
+3. **信頼性**: オフライン動作可能、CLIのバージョン間の違いに影響されない
+4. **自動更新**: SDK更新時に自動的に最新のパッケージリストが反映される
+
 ### ワークフロー
 
 ```
