@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(bunx expo install:*)",
-      "Bash(expo install:*)"
+      "Bash(expo install:*)",
+      "Bash(bunx expo:*)",
+      "Bash(bunx expo-doctor:*)",
+      "Bash(readlink:*)"
     ],
     "deny": [],
     "ask": []

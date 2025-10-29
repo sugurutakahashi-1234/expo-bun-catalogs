@@ -1,6 +1,6 @@
 # Expo + Bun + Catalog Monorepo
 
-Expo 53 + Bun Workspaces + Catalog機能を使った、**Expo管理パッケージの依存バージョン管理システム**の検証リポジトリ。
+Expo 54 + Bun Workspaces + Catalog機能を使った、**Expo管理パッケージの依存バージョン管理システム**の検証リポジトリ。
 
 ## 🎯 このリポジトリの目的
 
@@ -277,15 +277,33 @@ bun run expo:doctor      # Expo検証
 # 1. Expo SDKをアップデート
 cd apps/expo && bunx expo install expo@latest && cd ../..
 
-# 2-7. スクリプト実行
+# 2. Peer dependencyの確認と追加
+# SDKアップデート後、peer dependencyエラーが出る場合があります
+cd apps/expo && bun install
+# 例: "react-native-reanimated requires react-native-worklets"
+
+# 必要に応じてpeer dependencyを追加
+bunx expo install react-native-worklets
+cd ../..
+
+# 3-9. スクリプト実行
 bun run expo:fix         # SDK互換バージョンに修正
 bun run sync:catalog     # catalog同期
 bun run fix:catalog      # catalog:変換
 bun run clean:catalog    # 未使用削除
-bun install              # 再インストール
+
+# 4. クリーンインストール（重複依存関係を解消）
+bun run clean:lock       # 全node_modules + bun.lock削除
+bun install              # クリーンインストール
+
+# 5. 検証
 bun run check:managed    # 整合性検証
-bun run expo:doctor      # Expo検証
+bun run expo:doctor      # Expo検証（17/17チェック合格が理想）
 ```
+
+**Note**:
+- SDK 54以降へのアップグレード時は、Metro configの変更が必要な場合があります。トラブルシューティングセクションを参照してください。
+- `clean:lock`ステップは、expo-doctorの重複依存関係警告を解消するために重要です。
 
 ## 🎯 設計原則
 
@@ -330,6 +348,55 @@ bun run expo:doctor
 cd apps/expo && bunx expo start -c
 ```
 
+### Metro Config: SDK 54+での変更
+
+SDK 54にアップグレードする際、`apps/expo/metro.config.js`の以下の変更が推奨されます：
+
+**変更前（SDK 53以前）**:
+```javascript
+config.watchFolders = [workspaceRoot];
+config.resolver.disableHierarchicalLookup = true;
+```
+
+**変更後（SDK 54+）**:
+```javascript
+// ExpoのデフォルトwatchFoldersを保持しつつworkspace rootを追加
+config.watchFolders = [...(config.watchFolders || []), workspaceRoot];
+
+// disableHierarchicalLookupの行を削除（Expoのデフォルト: false を使用）
+// これによりMonorepo環境でモジュール解決が正しく動作します
+```
+
+**理由**: SDK 54以降、Expoのデフォルト設定が改善され、monorepo対応が強化されました。`disableHierarchicalLookup: false`により、Metroが親ディレクトリのnode_modulesを正しく解決できます。
+
+### expo-doctor: 重複依存関係の警告
+
+`bunx expo-doctor`を実行すると、重複した依存関係の警告が表示されることがあります：
+
+```
+✖ Check that no duplicate dependencies are installed
+Found duplicates for expo, expo-constants, react-native...
+```
+
+**原因**: Bunのcontent-addressable storageシステムが、異なるpeer dependencyコンテキストで同じバージョンを複数インストールすることがあります。
+
+**解決方法**: 以下のクリーンインストールで解消できます：
+
+```bash
+bun run clean:lock  # 全node_modules + bun.lockを削除
+bun install         # クリーンインストール
+```
+
+**重要**: `bun.lock`も削除することで、Bunが依存関係を再計算し、重複のない最適な構造で再インストールします。
+
+**その他のクリーンコマンド**:
+```bash
+bun run clean        # node_modulesのみ削除（bun installは手動実行）
+bun run clean:cache  # Bunのグローバルキャッシュもクリア
+```
+
+**補足**: `clean`コマンドは`find`を使用しているため、プロジェクトのどこから実行しても全てのnode_modulesを削除できます。
+
 ## 📊 検証用パッケージ
 
 このリポジトリには、エラーケースを検証するための`broken-*`パッケージが含まれています：
@@ -344,7 +411,7 @@ cd apps/expo && bunx expo start -c
 - [Bun Workspaces](https://bun.sh/docs/install/workspaces)
 - [Bun Catalog](https://bun.sh/docs/install/workspaces#catalog)
 - [Expo CLI](https://docs.expo.dev/more/expo-cli/)
-- [Expo SDK 53](https://docs.expo.dev/versions/v53.0.0/)
+- [Expo SDK 54](https://docs.expo.dev/versions/v54.0.0/)
 
 ## 📦 他のプロジェクトへの適用方法
 

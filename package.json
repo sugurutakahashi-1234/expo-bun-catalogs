@@ -8,16 +8,13 @@
     "packages/*"
   ],
   "catalog": {
-    "react": "19.0.0",
-    "react-native": "0.79.6",
-    "react-native-safe-area-context": "5.4.0",
-    "react-native-screens": "~4.11.1",
-    "expo-constants": "~17.1.7",
-    "react-dom": "19.0.0",
-    "expo-status-bar": "~2.2.3",
-    "react-native-gesture-handler": "~2.24.0",
-    "react-native-reanimated": "~3.17.4",
-    "react-native-svg": "15.11.2"
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "expo-constants": "~18.0.10",
+    "react-dom": "19.1.0",
+    "react-native-svg": "15.12.1"
   },
   "scripts": {
     "expo:fix": "bun run --cwd apps/expo fix",
@@ -31,7 +28,10 @@
     "check:deps": "bun run scripts/check-deps.ts",
     "detect:missing": "bun run scripts/detect-missing-packages.ts",
     "fix:catalog": "bun run scripts/fix-catalog-references.ts",
-    "clean:catalog": "bun run scripts/clean-catalog.ts"
+    "clean:catalog": "bun run scripts/clean-catalog.ts",
+    "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf {} +",
+    "clean:lock": "bun run clean && rm -rf bun.lock",
+    "clean:cache": "bun pm cache rm && bun run clean"
   },
   "devDependencies": {
     "@types/bun": "latest"

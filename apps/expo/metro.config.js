@@ -6,8 +6,8 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// Monorepo: Watch all workspace packages
-config.watchFolders = [workspaceRoot];
+// Monorepo: Augment Expo's default watchFolders with workspace root
+config.watchFolders = [...(config.watchFolders || []), workspaceRoot];
 
 // Monorepo: Support resolving packages from workspace
 config.resolver.nodeModulesPaths = [
@@ -15,7 +15,7 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-// Monorepo: Support workspace protocol
-config.resolver.disableHierarchicalLookup = true;
+// Use Expo's default disableHierarchicalLookup (false)
+// This allows Metro to resolve modules correctly in monorepo setups
 
 module.exports = config;
