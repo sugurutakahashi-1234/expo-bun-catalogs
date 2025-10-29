@@ -202,7 +202,7 @@ for (const [pkg, usages] of allDeps.entries()) {
             messages.push(
               `Expo-managed package must use "catalog:", but "${pkg}" is not defined in root catalog`
             );
-            messages.push(`Action: Add "${pkg}" to ${expoAppDir}/package.json and run "bun run sync:catalog"`);
+            messages.push(`Action: Add "${pkg}" to ${expoAppDir}/package.json`);
           } else {
             messages.push(`Expo-managed package must use "catalog:", found "${usage.version}"`);
           }
@@ -359,8 +359,7 @@ if (totalErrorsIncludingCatalog > 0) {
   }
   console.log(`   2. For ${expoAppDir}: Use concrete versions for Expo-managed packages`);
   console.log("   3. For other packages: Use \"catalog:\" for Expo-managed packages");
-  console.log("   4. Remove unused catalog entries from package.json");
-  console.log(`   5. Run: bun run sync:catalog (after fixing ${expoAppDir})\n`);
+  console.log("   4. Remove unused catalog entries from package.json\n");
   process.exit(1);
 } else if (totalWarnings > 0) {
   console.log(

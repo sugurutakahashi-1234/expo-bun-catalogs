@@ -423,11 +423,11 @@ bun run clean:cache  # Bunのグローバルキャッシュもクリア
 scripts/
 ├── shared/
 │   └── expo-utils.ts
-├── detect-missing-packages.ts
-├── check-expo-managed.ts
-├── sync-expo-catalog.ts
-├── fix-catalog-references.ts
-└── clean-catalog.ts
+├── expo-sdk-detect-missing.ts
+├── expo-sdk-validate-catalog.ts
+├── expo-sdk-sync-catalog.ts
+├── expo-sdk-fix-references.ts
+└── expo-sdk-clean-catalog.ts
 ```
 
 ### package.json の変更

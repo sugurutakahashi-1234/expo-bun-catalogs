@@ -105,9 +105,7 @@ if (totalFixed > 0) {
   for (const file of fixedFiles) {
     console.log(`   - ${file}`);
   }
-  console.log("\n💡 Next steps:");
-  console.log("   1. Run: bun install");
-  console.log("   2. Run: bun run check:managed\n");
+  console.log();
 } else {
   console.log("✅ No fixes needed - all Expo-managed packages already use catalog:\n");
 }

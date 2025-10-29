@@ -175,11 +175,6 @@ async function syncExpoCatalog() {
     rootPkg.catalog = catalog;
     await Bun.write("./package.json", JSON.stringify(rootPkg, null, 2) + "\n");
     console.log("✅ Root package.json updated successfully!\n");
-
-    console.log("💡 Next steps:");
-    console.log("   1. Review the changes: git diff package.json");
-    console.log("   2. Run: bun install");
-    console.log("   3. Run: bun run check:managed\n");
   } else {
     console.log("✅ Catalog is already synchronized, no changes needed!\n");
   }
