@@ -1,97 +1,15 @@
 #!/usr/bin/env bun
-import { $, Glob } from "bun";
-import { dirname } from "node:path";
-
-// ルート package.json から workspaces と catalog を取得
-async function getRootPackageJson(baseDir: string) {
-  try {
-    return await Bun.file(`${baseDir}/package.json`).json();
-  } catch (error) {
-    console.error("⚠️  Could not read root package.json");
-    process.exit(1);
-  }
-}
-
-// Expo 依存を持つパッケージを自動検出
-async function findExpoApp(packageJsonFiles: string[]): Promise<string | null> {
-  for (const pkgPath of packageJsonFiles) {
-    try {
-      const pkgJson = await Bun.file(pkgPath).json();
-      const deps = { ...pkgJson.dependencies, ...pkgJson.devDependencies };
-
-      if (deps.expo) {
-        return dirname(pkgPath);
-      }
-    } catch (error) {
-      // package.json が読めない場合はスキップ
-    }
-  }
-  return null;
-}
-
-// ワークスペース内の全 package.json を検索
-async function findPackageJsonFiles(rootPkg: any): Promise<string[]> {
-  const workspacePatterns = rootPkg.workspaces || [];
-  const packageJsonPaths: string[] = [];
-
-  for (const pattern of workspacePatterns) {
-    const globPattern = pattern.endsWith("/*")
-      ? `${pattern}/package.json`
-      : `${pattern}/*/package.json`;
-
-    const globber = new Glob(globPattern);
-
-    for await (const file of globber.scan(".")) {
-      packageJsonPaths.push(file);
-    }
-  }
-
-  return packageJsonPaths;
-}
-
-// パッケージが Expo 管理対象かチェック
-async function isExpoManaged(pkg: string, expoAppPath: string): Promise<boolean> {
-  const originalCwd = process.cwd();
-
-  try {
-    process.chdir(expoAppPath);
-
-    // 出力内容を取得して解析
-    await $`bunx expo install ${pkg} --check`.text();
-
-    process.chdir(originalCwd);
-
-    // "Dependencies are up to date" = バージョン情報なし = Expo 非管理
-    // エラーなく完了した場合は非管理
-    return false;
-  } catch (error: any) {
-    process.chdir(originalCwd);
-
-    const errorText = error.stderr?.toString() || error.stdout?.toString() || "";
-
-    // "should be updated" / "expected version" = Expo 管理対象
-    if (
-      errorText.includes("should be updated") ||
-      errorText.includes("expected version") ||
-      errorText.includes("is using the correct version")
-    ) {
-      return true; // Expo 管理対象
-    }
-
-    // "not found in the Expo SDK" = 明示的に非管理
-    if (
-      errorText.includes("not found in the Expo SDK") ||
-      errorText.includes("is not managed by the Expo SDK") ||
-      errorText.includes("not supported") ||
-      errorText.includes("not included")
-    ) {
-      return false; // 明示的に非管理
-    }
-
-    // その他のエラーは非管理として扱う
-    return false;
-  }
-}
+import {
+  type PackageJson,
+  type DependencyType,
+  getRootPackageJson,
+  findPackageJsonFiles,
+  findExpoApp,
+  isExpoManaged,
+  isCatalogReference,
+  isWorkspaceReference,
+  isTypesPackage,
+} from "./shared/expo-utils";
 
 console.log("🔍 Analyzing workspace dependencies and catalog usage...\n");
 
@@ -106,19 +24,19 @@ type DependencyInfo = {
   version: string;
   source: string;
   isCatalog: boolean;
-  depType: "dependencies" | "peerDependencies" | "devDependencies";
+  depType: DependencyType;
 };
 
 const allDeps = new Map<string, DependencyInfo[]>();
 
 for (const pkgPath of packageJsonFiles) {
   try {
-    const pkgJson = await Bun.file(pkgPath).json();
+    const pkgJson: PackageJson = await Bun.file(pkgPath).json();
 
     console.log(`📄 ${pkgPath}:`);
 
     // dependencies, peerDependencies, devDependencies を全てチェック
-    const depTypes: Array<"dependencies" | "peerDependencies" | "devDependencies"> = [
+    const depTypes: DependencyType[] = [
       "dependencies",
       "peerDependencies",
       "devDependencies",
@@ -135,8 +53,8 @@ for (const pkgPath of packageJsonFiles) {
       for (const [name, version] of Object.entries(deps)) {
         if (typeof version !== "string") continue;
 
-        const isCatalog = version.startsWith("catalog:");
-        const isWorkspace = version.startsWith("workspace:");
+        const isCatalog = isCatalogReference(version);
+        const isWorkspace = isWorkspaceReference(version);
 
         if (!isWorkspace) {
           if (!allDeps.has(name)) {
@@ -144,7 +62,7 @@ for (const pkgPath of packageJsonFiles) {
           }
 
           allDeps.get(name)!.push({
-            version: version as string,
+            version,
             source: pkgPath,
             isCatalog,
             depType,
@@ -175,6 +93,22 @@ if (!expoAppPath) {
 }
 
 console.log(`🎯 Using Expo app: ${expoAppPath}\n`);
+
+// apps/expo/package.json を読み込んでバージョン情報を取得
+const expoAppPkgPath = `${expoAppPath}/package.json`;
+const expoAppPkg: PackageJson = await Bun.file(expoAppPkgPath).json();
+const expoAppVersions = new Map<string, string>();
+
+// apps/expo の全依存関係のバージョンを記録
+for (const depType of ["dependencies", "devDependencies"] as DependencyType[]) {
+  const deps = expoAppPkg[depType] || {};
+  for (const [name, version] of Object.entries(deps)) {
+    if (typeof version === "string" && !isWorkspaceReference(version) && !isCatalogReference(version)) {
+      expoAppVersions.set(name, version);
+    }
+  }
+}
+
 console.log("🔍 Checking which packages are managed by Expo SDK...\n");
 
 // 全ユニークなパッケージを Expo 管理対象かチェック
@@ -186,7 +120,6 @@ for (const pkg of uniquePackages) {
   const isManaged = await isExpoManaged(pkg, expoAppPath);
   expoManagedStatus.set(pkg, isManaged);
 
-  // デバッグ: 判定結果を確認
   const status = isManaged ? "Expo managed" : "Not Expo managed";
   process.stdout.write(`\r   ${isManaged ? "✅" : "  "} ${pkg.padEnd(50)} ${status}\n`);
 }
@@ -197,9 +130,9 @@ console.log("\n📋 Analysis Results:\n");
 // 問題を検出（ファイル単位でグループ化）
 type PackageStatus = {
   pkg: string;
-  hasError: boolean;
+  depType: "dependencies" | "devDependencies" | "peerDependencies" | "catalog";
+  status: "error" | "warning" | "success";
   messages: string[];
-  depType: string;
 };
 
 const packagesByFile = new Map<string, PackageStatus[]>();
@@ -207,75 +140,159 @@ const packagesByFile = new Map<string, PackageStatus[]>();
 for (const [pkg, usages] of allDeps.entries()) {
   const isManaged = expoManagedStatus.get(pkg) || false;
 
-  // Expo管理パッケージのみを対象
-  if (!isManaged) continue;
-
   for (const usage of usages) {
     const messages: string[] = [];
+    const warnings: string[] = [];
+    const isExpoApp = usage.source === expoAppPkgPath;
 
-    // [ERROR 1] Expo管理対象なのにcatalogを使っていない
-    if (!usage.isCatalog && usage.depType === "dependencies") {
-      messages.push(`Should use "catalog:" but found "${usage.version}"`);
+    // Expo管理パッケージの検証
+    if (isManaged) {
+      if (isExpoApp) {
+        // ===== apps/expo/package.json の検証 =====
+        // [ERROR] Expo管理パッケージは具体的なバージョンを使用すべき
+        if (usage.isCatalog && usage.depType === "dependencies") {
+          messages.push(`Expo-managed package must use concrete version, found "catalog:"`);
+        }
+
+        // [WARNING] devDependencies に配置（@types/* 以外）
+        if (usage.depType === "devDependencies" && !isTypesPackage(pkg)) {
+          warnings.push(`Found in devDependencies, should be in dependencies`);
+        }
+      } else {
+        // ===== 他のワークスペースパッケージの検証 =====
+        // [ERROR] Expo管理パッケージはcatalogを使用すべき
+        if (!usage.isCatalog && usage.depType === "dependencies") {
+          messages.push(`Expo-managed package must use "catalog:", found "${usage.version}"`);
+        }
+
+        // [WARNING] 具体的なバージョンがapps/expoと異なる
+        if (!usage.isCatalog && usage.depType === "dependencies") {
+          const expoVersion = expoAppVersions.get(pkg);
+          if (expoVersion && usage.version !== expoVersion) {
+            warnings.push(`Version ${usage.version} differs from apps/expo ${expoVersion}`);
+          }
+        }
+
+        // [WARNING] devDependencies に配置（@types/* 以外）
+        if (usage.depType === "devDependencies" && !isTypesPackage(pkg)) {
+          warnings.push(`Found in devDependencies, consider moving to dependencies`);
+        }
+      }
     }
 
-    // [ERROR 2] Expo管理対象が devDependencies に配置されている（@types/* 以外）
-    // peerDependencies は許容（React Native ライブラリの標準パターン）
-    if (usage.depType === "devDependencies" && !pkg.startsWith("@types/")) {
-      messages.push(`Found in devDependencies, should be in dependencies`);
+    // catalog参照の検証（Expo管理の有無に関わらず）
+    if (usage.isCatalog) {
+      // [ERROR] catalogを参照しているがcatalog定義がない
+      if (!catalog[pkg]) {
+        messages.push(`Uses "catalog:" but not defined in root catalog`);
+      }
     }
 
-    // [ERROR 3] catalogを参照しているがcatalog定義がない
-    if (usage.isCatalog && !catalog[pkg]) {
-      messages.push(`Uses "catalog:" but not defined in root catalog`);
-    }
-
-    // [ERROR 4] catalogに定義があるがバージョンが異なる
-    if (
-      !usage.isCatalog &&
-      catalog[pkg] &&
-      usage.version !== catalog[pkg] &&
-      usage.depType === "dependencies"
-    ) {
-      messages.push(`Version mismatch with catalog: expected "${catalog[pkg]}"`);
-    }
-
-    // ファイル別にグループ化（エラーの有無に関わらず）
+    // ファイル別にグループ化
     if (!packagesByFile.has(usage.source)) {
       packagesByFile.set(usage.source, []);
     }
 
-    packagesByFile.get(usage.source)!.push({
+    // Expo管理パッケージまたはエラー/警告がある場合のみ記録
+    if (messages.length > 0) {
+      packagesByFile.get(usage.source)!.push({
+        pkg,
+        depType: usage.depType,
+        status: "error",
+        messages,
+      });
+    } else if (warnings.length > 0) {
+      packagesByFile.get(usage.source)!.push({
+        pkg,
+        depType: usage.depType,
+        status: "warning",
+        messages: warnings,
+      });
+    } else if (isManaged) {
+      packagesByFile.get(usage.source)!.push({
+        pkg,
+        depType: usage.depType,
+        status: "success",
+        messages: [],
+      });
+    }
+  }
+}
+
+// Catalog使用状況の追跡
+const usedCatalogEntries = new Set<string>();
+
+for (const [pkg, usages] of allDeps.entries()) {
+  for (const usage of usages) {
+    if (usage.isCatalog) {
+      usedCatalogEntries.add(pkg);
+    }
+  }
+}
+
+// 未使用のcatalogエントリを検出
+const unusedCatalogEntries: string[] = [];
+for (const catalogPkg of Object.keys(catalog)) {
+  if (!usedCatalogEntries.has(catalogPkg)) {
+    unusedCatalogEntries.push(catalogPkg);
+  }
+}
+
+// 未使用catalogエントリをエラーとして追加
+if (unusedCatalogEntries.length > 0) {
+  if (!packagesByFile.has("package.json")) {
+    packagesByFile.set("package.json", []);
+  }
+
+  for (const pkg of unusedCatalogEntries) {
+    packagesByFile.get("package.json")!.push({
       pkg,
-      hasError: messages.length > 0,
-      messages,
-      depType: usage.depType,
+      depType: "catalog",
+      status: "warning",
+      messages: ["Catalog entry not referenced by any package (consider removing from catalog)"],
     });
   }
 }
 
 // 結果表示
-let totalIssues = 0;
+let totalErrors = 0;
+let totalWarnings = 0;
 let totalCorrect = 0;
 let filesWithErrors = 0;
+let filesWithWarnings = 0;
 
 // ファイルごとに表示
 for (const [file, packages] of packagesByFile.entries()) {
-  const hasErrors = packages.some((p) => p.hasError);
-  const fileIcon = hasErrors ? "❌" : "✅";
+  const hasErrors = packages.some((p) => p.status === "error");
+  const hasWarnings = packages.some((p) => p.status === "warning");
+  const fileIcon = hasErrors ? "❌" : hasWarnings ? "⚠️ " : "✅";
 
   if (hasErrors) filesWithErrors++;
+  if (hasWarnings && !hasErrors) filesWithWarnings++;
 
   console.log(`${fileIcon} ${file}`);
 
   for (const status of packages) {
-    if (status.hasError) {
-      const message = status.messages.join(", ");
-      console.log(`  ❌ ${status.pkg}: ${message}`);
-      totalIssues++;
-    } else {
-      const depTypeLabel = status.depType !== "dependencies" ? ` (${status.depType})` : "";
-      console.log(`  ✅ ${status.pkg}: catalog${depTypeLabel}`);
-      totalCorrect++;
+    switch (status.status) {
+      case "error":
+        console.log(`  ❌ ${status.pkg}: ${status.messages.join(", ")}`);
+        totalErrors++;
+        break;
+      case "warning":
+        console.log(`  ⚠️  ${status.pkg}: ${status.messages.join(", ")}`);
+        totalWarnings++;
+        break;
+      case "success":
+        const depTypeLabel =
+          status.depType === "catalog"
+            ? " (root catalog)"
+            : status.depType !== "dependencies"
+              ? ` (${status.depType})`
+              : "";
+        const versionInfo = status.depType === "dependencies" || status.depType === "catalog" ? " ✓" : "";
+        console.log(`  ✅ ${status.pkg}:${depTypeLabel}${versionInfo}`);
+        totalCorrect++;
+        break;
     }
   }
 
@@ -284,13 +301,22 @@ for (const [file, packages] of packagesByFile.entries()) {
 
 // サマリー表示
 console.log("─".repeat(70));
-if (totalIssues > 0) {
+if (totalErrors > 0) {
   console.log(
-    `\n📊 Summary: ${totalIssues} issue(s) found in ${filesWithErrors} file(s), ${totalCorrect} packages correctly configured\n`
+    `\n📊 Summary: ${totalErrors} error(s) in ${filesWithErrors} file(s), ${totalWarnings} warning(s)\n`
   );
-  console.log("💡 Fix: Use \"catalog:\" for all Expo-managed packages in dependencies\n");
+  console.log("💡 Fix suggestions:");
+  console.log("   1. For apps/expo: Use concrete versions for Expo-managed packages");
+  console.log("   2. For other packages: Use \"catalog:\" for Expo-managed packages");
+  console.log("   3. Remove unused catalog entries from package.json");
+  console.log("   4. Run: bun run sync:catalog (after fixing apps/expo)\n");
   process.exit(1);
+} else if (totalWarnings > 0) {
+  console.log(
+    `\n⚠️  Summary: ${totalWarnings} warning(s) in ${filesWithWarnings} file(s), ${totalCorrect} packages correctly configured\n`
+  );
+  console.log("💡 Warnings can be ignored, but consider reviewing them for best practices\n");
 } else {
-  console.log(`\n✅ All Expo-managed packages are correctly configured!`);
-  console.log(`📊 Summary: ${totalCorrect} packages using catalog correctly\n`);
+  console.log(`\n✅ All packages are correctly configured!`);
+  console.log(`📊 Summary: ${totalCorrect} packages validated\n`);
 }
