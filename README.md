@@ -47,13 +47,17 @@ packages/* (catalog: 参照)
 bun install
 
 # 2. Expo依存を確定
-cd apps/expo && bunx expo install --fix && cd ../..
+bun run expo:fix
 
 # 3. catalogに同期
-bun run sync:catalog && bun install
+bun run sync:catalog
 
-# 4. 検証
+# 4. 再インストール
+bun install
+
+# 5. 検証
 bun run check:managed
+bun run expo:doctor
 ```
 
 ## 🛠 主要スクリプト
@@ -108,13 +112,15 @@ $ bun run check:managed
 bun run detect:missing
 # → 📦 expo-font, expo-image
 
-# 2. 出力されたコマンドを実行
+# 2. Expoアプリに追加（rootから実行）
 cd apps/expo && bunx expo install expo-font expo-image && cd ../..
 
-# 3. 同期・変換
+# 3. 同期・変換・検証
 bun run sync:catalog
 bun run fix:catalog
 bun install
+bun run check:managed
+bun run expo:doctor
 ```
 
 **方法2: check:managedで検証しながら追加**
@@ -124,29 +130,32 @@ bun install
 bun run check:managed
 # → ❌ expo-font: not defined in root catalog
 
-# 2. apps/expoに追加
+# 2. Expoアプリに追加（rootから実行）
 cd apps/expo && bunx expo install expo-font && cd ../..
 
-# 3. 同期・変換
+# 3. 同期・変換・検証
 bun run sync:catalog
 bun run fix:catalog
 bun install
-
-# 4. 再検証
 bun run check:managed
+bun run expo:doctor
 ```
 
 ### Expo SDKアップデート
 
 ```bash
-# 1. apps/expoでSDK更新
-cd apps/expo && bunx expo install expo@latest && bunx expo install --fix && cd ../..
+# 1. Expo SDKをアップデート（rootから実行）
+cd apps/expo && bunx expo install expo@latest && cd ../..
 
-# 2. 同期
-bun run sync:catalog && bun install
+# 2. 依存関係を修正
+bun run expo:fix
 
-# 3. 検証
+# 3. 同期・変換・検証
+bun run sync:catalog
+bun run fix:catalog
+bun install
 bun run check:managed
+bun run expo:doctor
 ```
 
 ## 🎯 設計原則
