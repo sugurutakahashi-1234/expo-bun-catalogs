@@ -346,6 +346,84 @@ cd apps/expo && bunx expo start -c
 - [Expo CLI](https://docs.expo.dev/more/expo-cli/)
 - [Expo SDK 53](https://docs.expo.dev/versions/v53.0.0/)
 
+## 📦 他のプロジェクトへの適用方法
+
+このカタログ管理システムを既存のExpo + Bunモノレポに適用する最小限の手順です。
+
+### 前提条件
+
+- Bun workspaces が設定済み
+- Expo アプリが workspace 内に存在（`expo` パッケージがインストール済み）
+- Expo アプリでは具体的バージョン（`"react": "19.0.0"` など）を使用
+
+### コピーするファイル
+
+以下のファイルを同じディレクトリ構造でコピー：
+
+```
+scripts/
+├── shared/
+│   └── expo-utils.ts
+├── detect-missing-packages.ts
+├── check-expo-managed.ts
+├── sync-expo-catalog.ts
+├── fix-catalog-references.ts
+└── clean-catalog.ts
+```
+
+### package.json の変更
+
+#### ルート package.json に追加
+
+```json
+{
+  "catalog": {},
+  "scripts": {
+    "expo:fix": "bun run --cwd apps/expo fix",
+    "expo:check": "bun run --cwd apps/expo check",
+    "expo:doctor": "bun run --cwd apps/expo doctor",
+    "sync:catalog": "bun run scripts/sync-expo-catalog.ts",
+    "check:managed": "bun run scripts/check-expo-managed.ts",
+    "detect:missing": "bun run scripts/detect-missing-packages.ts",
+    "fix:catalog": "bun run scripts/fix-catalog-references.ts",
+    "clean:catalog": "bun run scripts/clean-catalog.ts"
+  }
+}
+```
+
+**注**: `apps/expo` は実際の Expo アプリのパスに置き換えてください。
+
+#### Expo アプリの package.json に追加
+
+```json
+{
+  "scripts": {
+    "fix": "bunx expo install --fix",
+    "check": "bunx expo install --check",
+    "doctor": "bunx expo-doctor"
+  }
+}
+```
+
+### 初回セットアップ
+
+```bash
+bun install
+bun run detect:missing    # 不足パッケージを確認
+bun run expo:fix          # Expo バージョンを修正
+bun run sync:catalog      # カタログに同期
+bun run fix:catalog       # catalog: 参照に変換
+bun run clean:catalog     # 未使用エントリを削除
+bun install               # カタログで再インストール
+bun run check:managed     # 検証（必ずパス）
+```
+
+### 重要なルール
+
+- **Expo アプリ**: 具体的バージョンのみ（`catalog:` 使用禁止）
+- **他の packages**: Expo 管理パッケージは `catalog:` を使用
+- **カタログ**: Expo 管理パッケージのみ含める（`bundledNativeModules.json` 基準）
+
 ## 📄 ライセンス
 
 MIT
