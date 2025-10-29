@@ -26,14 +26,15 @@
     "react-native-gesture-handler": "~2.20.2"
   },
   "scripts": {
-    "fix:expo": "bunx expo install --fix -C apps/expo",
-    "check:expo": "bunx expo install --check -C apps/expo",
-    "doctor": "bunx expo-doctor -C apps/expo",
-    "why:rn": "bun pm why react-native",
-    "check:deps": "bun run scripts/check-deps.ts",
+    "expo:fix": "bun run --filter expo-app fix && bun run restore:catalog",
+    "expo:check": "bun run --filter expo-app check",
+    "expo:doctor": "bun run --filter expo-app doctor",
+    "restore:catalog": "bun run scripts/restore-catalog.ts",
     "check:managed": "bun run scripts/check-expo-managed.ts",
+    "check:deps": "bun run scripts/check-deps.ts",
     "list:expo": "bun run scripts/list-expo-packages.ts",
-    "debug:expo": "bun run scripts/debug-expo-check.ts"
+    "debug:expo": "bun run scripts/debug-expo-check.ts",
+    "why:rn": "bun pm why react-native"
   },
   "devDependencies": {
     "@types/bun": "latest"
