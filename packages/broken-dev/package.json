@@ -12,6 +12,6 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/react": "catalog:"
+    "@types/react": "~19.0.10"
   }
 }

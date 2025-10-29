@@ -13,7 +13,7 @@
     "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "@types/react": "catalog:",
+    "@types/react": "~19.0.10",
     "@types/lodash": "^4.14.202"
   }
 }
