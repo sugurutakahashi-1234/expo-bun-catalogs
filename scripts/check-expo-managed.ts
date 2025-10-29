@@ -178,7 +178,14 @@ for (const [pkg, usages] of allDeps.entries()) {
         // ===== 他のワークスペースパッケージの検証 =====
         // [ERROR] Expo管理パッケージはcatalogを使用すべき
         if (!usage.isCatalog && usage.depType === "dependencies") {
-          messages.push(`Expo-managed package must use "catalog:", found "${usage.version}"`);
+          if (!catalog[pkg]) {
+            messages.push(
+              `Expo-managed package must use "catalog:", but "${pkg}" is not defined in root catalog`
+            );
+            messages.push(`Action: Add "${pkg}" to apps/expo/package.json and run "bun run sync:catalog"`);
+          } else {
+            messages.push(`Expo-managed package must use "catalog:", found "${usage.version}"`);
+          }
         }
 
         // [WARNING] 具体的なバージョンがapps/expoと異なる

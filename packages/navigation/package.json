@@ -9,8 +9,8 @@
   "dependencies": {
     "react": "catalog:",
     "react-native": "catalog:",
-    "react-native-svg": "^15.9.0",
+    "react-native-svg": "catalog:",
     "@react-navigation/native": "^7.0.0",
-    "react-native-screens": "~4.1.0"
+    "react-native-screens": "catalog:"
   }
 }

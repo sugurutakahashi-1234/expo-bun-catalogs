@@ -1,271 +1,236 @@
 # Expo + Bun + Catalog Monorepo
 
-Expo 53 ベースのモノレポ構成で、Bun の **catalog** 機能を使った依存バージョン管理のベストプラクティス実装。
+Expo 53 + Bun Workspaces + Catalog機能を使った、**Expo管理パッケージの依存バージョン管理システム**の検証リポジトリ。
 
-## 📦 構成
+## 🎯 このリポジトリの目的
 
-```
-expo-bun-catalogs/
-├── package.json              # catalog + overrides + workspace
-├── apps/
-│   └── expo/                 # Expo 53 アプリ
-│       ├── package.json      # catalog: 参照
-│       ├── app.json
-│       ├── App.tsx
-│       └── metro.config.js
-├── packages/
-│   └── ui/                   # 共有UIコンポーネント
-│       ├── package.json      # dependencies (catalog 参照)
-│       └── src/
-└── scripts/
-    └── check-deps.mjs        # 依存チェックスクリプト
-```
+Expo SDK 53環境において、以下を実現するための仕組みを検証・実装します:
 
-## 🚀 セットアップ
+1. **Expo管理パッケージのみをCatalogで管理** - `bundledNativeModules.json`を基準に判定
+2. **apps/expoを唯一の真実の源（Source of Truth）とする** - Expo CLIが管理するバージョンをワークスペース全体に伝播
+3. **自動検証・修正スクリプト** - 手動管理を最小化し、一貫性を保つ
 
-### 1. 依存をインストール
+## 🏗 アーキテクチャ原則
 
-```bash
-bun install
-```
-
-### 2. Expo の正解バージョンを確定
-
-```bash
-cd apps/expo
-bunx expo install --fix
-bunx expo-doctor
-```
-
-### 3. catalog に反映（必要に応じて）
-
-`apps/expo/package.json` の依存バージョンをルートの `catalog` に反映：
+### Expo管理パッケージのみをCatalogで管理
 
 ```json
-// package.json (ルート)
+// ✅ catalogに含める（Expo管理パッケージ）
 {
   "catalog": {
-    "expo": "~53.0.0",
-    "react": "18.3.1",
-    "react-native": "0.76.5"
+    "react": "19.0.0",
+    "react-native": "0.79.6",
+    "expo-constants": "~17.0.3",
+    "react-native-screens": "~4.11.1"
   }
 }
+
+// ❌ catalogに含めない（非Expo管理）
+// - @react-navigation/native
+// - next, zod, lodash など
 ```
 
-### 4. アプリを起動
+### ワークフロー
+
+```
+apps/expo (具体的バージョン)
+    ↓ sync:catalog
+root catalog (Expo管理のみ)
+    ↓ fix:catalog
+packages/* (catalog: 参照)
+```
+
+## 🚀 クイックスタート
 
 ```bash
-cd apps/expo
-bun start
-```
-
-## 🛠 便利コマンド
-
-### 依存チェック
-
-```bash
-# Expo 推奨バージョンとの比較
-bun run check:expo
-
-# ヘルスチェック
-bun run doctor
-
-# 特定パッケージの重複確認
-bun run why:rn
-```
-
-### 依存修正
-
-```bash
-# Expo SDK に合わせて自動修正
-bun run fix:expo
-```
-
-### 全体チェック（CI用）
-
-```bash
-bun run check:deps
-```
-
-## 📚 catalog の使い方
-
-### catalog で管理するパッケージ
-
-```json
-// package.json (ルート)
-{
-  "catalog": {
-    "expo": "~53.0.0",
-    "react": "18.3.1",
-    "react-native": "0.76.5"
-  }
-}
-```
-
-### catalog を参照
-
-```json
-// apps/expo/package.json
-{
-  "dependencies": {
-    "expo": "catalog:",
-    "react": "catalog:"
-  }
-}
-```
-
-```json
-// packages/ui/package.json
-{
-  "dependencies": {
-    "react": "catalog:",
-    "react-native": "catalog:"
-  }
-}
-```
-
-## 🔄 バージョンアップデートフロー
-
-### Expo SDK をアップデートする場合
-
-```bash
-# 1. apps/expo で Expo SDK をアップデート
-cd apps/expo
-bunx expo install expo@latest
-
-# 2. 依存を自動修正
-bunx expo install --fix
-
-# 3. ルートの catalog に反映
-# apps/expo/package.json → ルート package.json の catalog へコピー
-
-# 4. ルートで再インストール
-cd ../..
+# 1. インストール
 bun install
 
-# 5. チェック
-bun run check:expo
+# 2. Expo依存を確定
+cd apps/expo && bunx expo install --fix && cd ../..
+
+# 3. catalogに同期
+bun run sync:catalog && bun install
+
+# 4. 検証
+bun run check:managed
 ```
 
-### 個別パッケージをアップデートする場合
+## 🛠 主要スクリプト
+
+### `bun run check:managed` ⭐️ 最重要
+
+依存関係の一貫性を検証し、問題を発見・修正方法を提示。
 
 ```bash
-# 1. catalog のバージョンを更新
-# package.json の catalog セクションを編集
+$ bun run check:managed
 
-# 2. 再インストール
-bun install
+✅ apps/expo/package.json
+  ✅ react: ✓
 
-# 3. チェック
-bun run check:expo
+❌ packages/navigation/package.json
+  ❌ expo-font: must use "catalog:", but not defined in root catalog
+     Action: Add "expo-font" to apps/expo and run "bun run sync:catalog"
 ```
 
-## 🧩 overrides の使い方
+**検証内容**:
+- Expo管理パッケージの判定（`bundledNativeModules.json`基準）
+- Catalog整合性（非Expo管理パッケージがcatalogに含まれていないか）
+- apps/expoは具体的バージョン使用
+- 他パッケージはcatalog:参照使用
 
-間接依存のバージョンを強制統一する場合：
+### 修正スクリプト
 
-```json
-// package.json (ルート)
-{
-  "overrides": {
-    "react": "18.3.1",
-    "react-native": "0.76.5",
-    "react-native-reanimated": "~3.16.1"
-  }
-}
-```
+| スクリプト | 説明 |
+|-----------|------|
+| `bun run sync:catalog` | apps/expo → root catalog へ同期 |
+| `bun run fix:catalog` | 具体的バージョン → `catalog:` に変換 |
+| `bun run clean:catalog` | 未使用catalogエントリを削除 |
 
-## 🏗 新しい共有パッケージの追加
+### Expoアプリ関連
+
+| スクリプト | 説明 |
+|-----------|------|
+| `bun run expo:fix` | apps/expoで`expo install --fix` |
+| `bun run expo:check` | apps/expoで`expo install --check` |
+| `bun run expo:doctor` | apps/expoで`expo-doctor` |
+| `bun run fix:all` | expo:fix + sync:catalog + bun install |
+
+## 📋 典型的なワークフロー
+
+### 新しいExpo管理パッケージを追加
 
 ```bash
-# 1. パッケージディレクトリを作成
-mkdir -p packages/new-package/src
+# 1. 検証して問題を発見
+bun run check:managed
+# → ❌ expo-font: not defined in root catalog
 
-# 2. package.json を作成
-cat > packages/new-package/package.json << 'EOF'
-{
-  "name": "@packages/new-package",
-  "version": "1.0.0",
-  "main": "./src/index.ts",
-  "dependencies": {
-    "react": "catalog:",
-    "react-native": "catalog:"
-  }
-}
-EOF
+# 2. apps/expoに追加
+cd apps/expo && bunx expo install expo-font && cd ../..
 
-# 3. 再インストール
+# 3. 同期・変換
+bun run sync:catalog
+bun run fix:catalog
 bun install
+
+# 4. 再検証
+bun run check:managed
 ```
 
-## 🔍 トラブルシューティング
+### Expo SDKアップデート
+
+```bash
+# 1. apps/expoでSDK更新
+cd apps/expo && bunx expo install expo@latest && bunx expo install --fix && cd ../..
+
+# 2. 同期
+bun run sync:catalog && bun install
+
+# 3. 検証
+bun run check:managed
+```
+
+## 🎯 設計原則
+
+### 1. check:managed を起点とする
+
+常に`bun run check:managed`から始め、エラーメッセージの指示に従う。
+
+### 2. apps/expoはExpo CLI経由のみ
+
+```bash
+# ✅ Good
+bunx expo install <package>
+
+# ❌ Bad - 手動編集しない
+# "expo-font": "~13.0.1" を直接編集
+```
+
+### 3. catalogは自動同期のみ
+
+```bash
+# ✅ Good
+bun run sync:catalog
+
+# ❌ Bad - 手動編集しない
+# catalog に直接パッケージを追加
+```
+
+## 🔍 実装の詳細
+
+### Expo管理判定
+
+`expo/bundledNativeModules.json`を直接読み込み判定：
+
+```typescript
+// scripts/shared/expo-utils.ts
+const bundledModulesPath = `${expoAppPath}/node_modules/expo/bundledNativeModules.json`;
+const bundledModules = await Bun.file(bundledModulesPath).json();
+const expoManagedPackages = new Set(Object.keys(bundledModules));
+```
+
+### エラー検出の分類
+
+| 場所 | エラー | 意味 |
+|-----|-------|------|
+| apps/expo | catalog:使用 | 具体的バージョンを使うべき |
+| 他パッケージ | 具体的バージョン使用 | catalog:を使うべき |
+| 他パッケージ | catalogに未定義 | apps/expoに追加→syncが必要 |
+| root catalog | 非Expo管理パッケージ | 原則違反、削除が必要 |
+
+### 3つの主要なエラーケース
+
+**1. catalogに存在しないExpo管理パッケージ**
+```
+❌ expo-font: must use "catalog:", but not defined in root catalog
+   Action: Add to apps/expo and run sync:catalog
+```
+→ apps/expoに追加してsync
+
+**2. catalogに存在するが参照していない**
+```
+❌ react: must use "catalog:", found "19.0.0"
+```
+→ `fix:catalog`で自動修正可能
+
+**3. 非Expo管理パッケージがcatalogに含まれる**
+```
+❌ lodash: NOT Expo-managed
+   Principle: Only Expo-managed packages should be in catalog
+```
+→ 手動でcatalogから削除
+
+## 🐛 トラブルシューティング
 
 ### バージョン不一致エラー
 
 ```bash
-# Expo の推奨バージョンに修正
-bun run fix:expo
-
-# ロックファイルを再生成
-bun install --force
+cd apps/expo && bunx expo install --fix && cd ../..
+bun run sync:catalog && bun install
 ```
 
-### Metro がパッケージを解決できない
+### Metroがパッケージを解決できない
 
 ```bash
-# Metro キャッシュをクリア
-cd apps/expo
-bunx expo start -c
+cd apps/expo && bunx expo start -c
 ```
 
-### TypeScript エラー
+## 📊 検証用パッケージ
 
-```bash
-# 依存をインストール
-bun install
+このリポジトリには、エラーケースを検証するための`broken-*`パッケージが含まれています：
 
-# TypeScript キャッシュをクリア
-rm -rf apps/expo/.expo
-```
-
-## 📝 CI/CD 設定例
-
-```yaml
-# .github/workflows/check.yml
-name: Check Dependencies
-
-on: [pull_request]
-
-jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-      - run: bun install
-      - run: bun run check:deps
-```
-
-## 🎯 ベストプラクティス
-
-1. **catalog で一元管理**
-   - React/RN 系は必ず catalog に登録
-   - バージョンアップは catalog だけ更新
-
-2. **overrides で衝突防止**
-   - 間接依存で問題が出たら overrides でピン
-
-3. **定期的にチェック**
-   - PR ごとに `bun run check:deps` を実行
-   - Expo SDK アップデート前後は `bunx expo-doctor` を実行
-
-4. **共有パッケージは軽量に**
-   - 必要最小限の依存のみ
-   - catalog 参照で統一
+- `packages/broken-version` - バージョン不一致
+- `packages/broken-mixed` - Expo管理・非管理混在
+- `packages/broken-dev` - devDependencies配置
+- `packages/broken-peer` - peerDependencies
 
 ## 📖 参考リンク
 
 - [Bun Workspaces](https://bun.sh/docs/install/workspaces)
 - [Bun Catalog](https://bun.sh/docs/install/workspaces#catalog)
 - [Expo CLI](https://docs.expo.dev/more/expo-cli/)
-- [Expo Doctor](https://docs.expo.dev/more/expo-cli/#doctor)
+- [Expo SDK 53](https://docs.expo.dev/versions/v53.0.0/)
+
+## 📄 ライセンス
+
+MIT

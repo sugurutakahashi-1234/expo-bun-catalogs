@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "react": "catalog:",
-    "react-native": "0.76.5",
-    "expo-constants": "~17.0.0",
+    "react-native": "catalog:",
+    "expo-constants": "catalog:",
     "lodash": "^4.17.21"
   },
   "devDependencies": {

@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "react": "catalog:",
-    "react-dom": "19.0.0",
+    "react-dom": "catalog:",
     "next": "^15.1.6"
   },
   "devDependencies": {

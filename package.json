@@ -8,13 +8,16 @@
     "packages/*"
   ],
   "catalog": {
-    "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
     "react-native": "0.79.6",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1",
+    "expo-constants": "~17.0.3",
+    "react-dom": "19.0.0",
+    "expo-status-bar": "~2.2.3",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-reanimated": "~3.17.4",
-    "react-native-safe-area-context": "5.4.0",
-    "react-native-screens": "~4.11.1"
+    "react-native-svg": "15.11.2"
   },
   "scripts": {
     "expo:fix": "bun run --cwd apps/expo fix",
@@ -26,6 +29,8 @@
     "sync:catalog": "bun run scripts/sync-expo-catalog.ts",
     "check:managed": "bun run scripts/check-expo-managed.ts",
     "check:deps": "bun run scripts/check-deps.ts",
+    "fix:catalog": "bun run scripts/fix-catalog-references.ts",
+    "clean:catalog": "bun run scripts/clean-catalog.ts",
     "fix:all": "bun run expo:fix && bun run sync:catalog && bun install",
     "why:rn": "bun pm why react-native"
   },

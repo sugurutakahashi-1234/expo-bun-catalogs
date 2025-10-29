@@ -7,9 +7,9 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "react": "18.2.0",
+    "react": "catalog:",
     "react-native": "catalog:",
-    "react-native-safe-area-context": "~4.8.0",
+    "react-native-safe-area-context": "catalog:",
     "date-fns": "^3.3.1"
   }
 }
