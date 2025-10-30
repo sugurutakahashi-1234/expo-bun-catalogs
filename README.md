@@ -58,9 +58,9 @@ Expo SDKは`react`, `react-native`などのパッケージを厳密にバージ�
 ```ts
 // apps/expo/package.json - ❌ NG例
 {
-  dependencies: {
-    react: "catalog:",  // ❌ expo install --fix が動作しない
-    expo: "catalog:"    // ❌ expo-doctor が正しくチェックできない
+  "dependencies": {
+    "react": "catalog:",  // ❌ expo install --fix が動作しない
+    "expo": "catalog:"    // ❌ expo-doctor が正しくチェックできない
   }
 }
 ```
@@ -70,9 +70,9 @@ Expo SDKは`react`, `react-native`などのパッケージを厳密にバージ�
 ```ts
 // apps/expo/package.json - ✅ OK例
 {
-  dependencies: {
-    react: "19.1.0",     // ✅ 具体的バージョン
-    expo: "^54.0.21"     // ✅ Expo CLIが管理可能
+  "dependencies": {
+    "react": "19.1.0",     // ✅ 具体的バージョン
+    "expo": "^54.0.21"     // ✅ Expo CLIが管理可能
   }
 }
 ```
@@ -84,10 +84,10 @@ Expo SDKは`react`, `react-native`などのパッケージを厳密にバージ�
 ```ts
 // packages/ui/package.json
 {
-  dependencies: {
-    react: "catalog:",         // ✅ Expo管理 → root catalogから自動参照
+  "dependencies": {
+    "react": "catalog:",         // ✅ Expo管理 → root catalogから自動参照
     "react-native": "catalog:", // ✅ Expo管理 → SDK更新時も自動追従
-    lodash: "^4.17.21"          // ⚪ 非Expo管理 → 具体的バージョン指定
+    "lodash": "^4.17.21"          // ⚪ 非Expo管理 → 具体的バージョン指定
   }
 }
 ```
@@ -99,8 +99,8 @@ Expo SDKは`react`, `react-native`などのパッケージを厳密にバージ�
 ```ts
 // package.json (root) - ✅ OK例
 {
-  catalog: {
-    react: "19.1.0",              // ✅ Expo SDK管理パッケージ
+  "catalog": {
+    "react": "19.1.0",              // ✅ Expo SDK管理パッケージ
     "react-native": "0.81.5",     // ✅ bundledNativeModules.json に含まれる
     "expo-constants": "~18.0.10"  // ✅ apps/expo から自動同期される
   }
@@ -110,9 +110,9 @@ Expo SDKは`react`, `react-native`などのパッケージを厳密にバージ�
 ```ts
 // package.json (root) - ❌ NG例
 {
-  catalog: {
-    lodash: "^4.17.21",  // ❌ Expo管理外 → 各パッケージで個別指定すべき
-    next: "^15.0.0"      // ❌ Expo管理外 → catalogに含めない
+  "catalog": {
+    "lodash": "^4.17.21",  // ❌ Expo管理外 → 各パッケージで個別指定すべき
+    "next": "^15.0.0"      // ❌ Expo管理外 → catalogに含めない
   }
 }
 ```
@@ -170,9 +170,9 @@ return new Set(Object.keys(bundledModules));
 |-----------|---------|------------|---------|
 | `expo:sdk:detect` | catalog未定義を検出 | なし | 最初に |
 | `expo:fix` | `expo install --fix`実行 | `apps/expo/package.json` | SDK更新後 |
-| `expo:sdk:sync` | catalogに同期 | `root/catalog` | fix実行後 |
+| `expo:sdk:sync` | catalogに同期 | ルート `package.json` の `catalog` | fix実行後 |
 | `expo:sdk:fix` | `catalog:`に変換 | `packages/*/package.json` | sync実行後 |
-| `expo:sdk:clean` | 未使用削除 | `root/catalog` | fix実行後 |
+| `expo:sdk:clean` | 未使用削除 | ルート `package.json` の `catalog` | fix実行後 |
 | `expo:sdk:validate` | 整合性検証 | なし | 変更後必ず |
 | `expo:doctor` | 健全性チェック | なし | 最終検証 |
 
