@@ -3,6 +3,8 @@
 Expo 54 + Bun Workspaces + Catalog機能を使った、**Expo管理パッケージの依存バージョン管理システム**の検証リポジトリ。
 
 > **Catalog とは**: Bun 1.1.30以降で提供される、モノレポ内でパッケージバージョンを一元管理する機能です。root `package.json` に`catalog`フィールドを定義し、各パッケージが`"依存名": "catalog:"`と記述することで、ワークスペース全体で統一されたバージョンを参照できます。
+> - [Bun Workspaces](https://bun.sh/docs/install/workspaces)
+> - [Bun Catalog](https://bun.sh/docs/install/workspaces#catalog)
 
 ## 🎯 このリポジトリの目的
 
@@ -162,21 +164,18 @@ return new Set(Object.keys(bundledModules));
 └─────────────────────┘
 ```
 
-## 📋 スクリプト（実行順）
+## 📋 スクリプト
 
-**標準フロー**: `expo:catalog:sync` → `expo:catalog:apply` → `bun install` → `expo:catalog:validate`
 
-**初回/追加時**: `expo:catalog:find` → `expo:fix` → 標準フロー
-
-| スクリプト | 何をする | ファイル変更 |
-|-----------|---------|------------|
-| `expo:catalog:find` | catalog未定義を検出 | なし |
-| `expo:fix` | `expo install --fix`実行 | `apps/expo/package.json` |
-| `expo:catalog:sync` | catalogに同期 | root `package.json` の `catalog` |
-| `expo:catalog:apply` | `catalog:`に変換 | `packages/*/package.json` |
-| `expo:catalog:clean` | 未使用削除 | root `package.json` の `catalog` |
-| `expo:catalog:validate` | 整合性検証 | なし |
-| `expo:doctor` | 健全性チェック | なし |
+| スクリプト | 変更対象ファイル | 実行内容 |
+|-----------|--------------|---------|
+| `expo:catalog:find` | なし | catalog未定義を検出 |
+| `expo:fix` | `apps/expo/package.json` | `expo install --fix`実行 |
+| `expo:catalog:sync` | root `package.json` の `catalog` | catalogに同期 |
+| `expo:catalog:apply` | `packages/*/package.json` | `catalog:`に変換 |
+| `expo:catalog:clean` | root `package.json` の `catalog` | 未使用削除 |
+| `expo:catalog:validate` | なし | 整合性検証 |
+| `expo:doctor` | なし | 健全性チェック |
 
 ## 🚀 基本ワークフロー
 
