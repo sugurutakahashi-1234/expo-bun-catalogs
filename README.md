@@ -370,11 +370,11 @@ scripts/
     "expo:doctor": "bun run --cwd apps/expo doctor",
 
     // Catalog管理用の自動化スクリプト
-    "expo:catalog:sync": "bun run scripts/expo-sync-catalog.ts",
-    "expo:catalog:validate": "bun run scripts/expo-validate-catalog.ts",
     "expo:catalog:find": "bun run scripts/expo-find-catalog-gaps.ts",
+    "expo:catalog:sync": "bun run scripts/expo-sync-catalog.ts",
     "expo:catalog:apply": "bun run scripts/expo-apply-catalog-references.ts",
-    "expo:catalog:clean": "bun run scripts/expo-clean-catalog.ts"
+    "expo:catalog:clean": "bun run scripts/expo-clean-catalog.ts",
+    "expo:catalog:validate": "bun run scripts/expo-validate-catalog.ts"
   }
 }
 ```
