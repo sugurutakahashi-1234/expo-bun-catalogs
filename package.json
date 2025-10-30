@@ -23,11 +23,11 @@
     "next:dev": "bun run --cwd apps/next dev",
     "next:build": "bun run --cwd apps/next build",
     "next:start": "bun run --cwd apps/next start",
-    "expo:catalog:sync": "bun run scripts/expo-sync-catalog.ts",
-    "expo:catalog:validate": "bun run scripts/expo-validate-catalog.ts",
     "expo:catalog:find": "bun run scripts/expo-find-catalog-gaps.ts",
+    "expo:catalog:sync": "bun run scripts/expo-sync-catalog.ts",
     "expo:catalog:apply": "bun run scripts/expo-apply-catalog-references.ts",
     "expo:catalog:clean": "bun run scripts/expo-clean-catalog.ts",
+    "expo:catalog:validate": "bun run scripts/expo-validate-catalog.ts",
     "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf {} +",
     "clean:lock": "bun run clean && rm -rf bun.lock",
     "clean:cache": "bun pm cache rm && bun run clean"
