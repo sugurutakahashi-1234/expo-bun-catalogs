@@ -2,7 +2,7 @@
 
 Expo 54 + Bun Workspaces + Catalog機能を使った、**Expo管理パッケージの依存バージョン管理システム**の検証リポジトリ。
 
-> **Catalog とは**: Bun 1.1.30以降で提供される、モノレポ内でパッケージバージョンを一元管理する機能です。rootの`package.json`に`catalog`フィールドを定義し、各パッケージが`"依存名": "catalog:"`と記述することで、ワークスペース全体で統一されたバージョンを参照できます。
+> **Catalog とは**: Bun 1.1.30以降で提供される、モノレポ内でパッケージバージョンを一元管理する機能です。root `package.json` に`catalog`フィールドを定義し、各パッケージが`"依存名": "catalog:"`と記述することで、ワークスペース全体で統一されたバージョンを参照できます。
 
 ## 🎯 このリポジトリの目的
 
@@ -164,15 +164,17 @@ return new Set(Object.keys(bundledModules));
 
 ## 📋 スクリプト（実行順）
 
-**基本フロー**: `expo:catalog:sync` → `expo:catalog:apply` → `bun install` → `expo:catalog:validate`
+**標準フロー**: `expo:catalog:sync` → `expo:catalog:apply` → `bun install` → `expo:catalog:validate`
+
+**初回/追加時**: `expo:catalog:find` → `expo:fix` → 標準フロー
 
 | スクリプト | 何をする | ファイル変更 | いつ使う |
 |-----------|---------|------------|---------|
 | `expo:catalog:find` | catalog未定義を検出 | なし | 最初に |
 | `expo:fix` | `expo install --fix`実行 | `apps/expo/package.json` | SDK更新後 |
-| `expo:catalog:sync` | catalogに同期 | ルート `package.json` の `catalog` | fix実行後 |
+| `expo:catalog:sync` | catalogに同期 | root `package.json` の `catalog` | fix実行後 |
 | `expo:catalog:apply` | `catalog:`に変換 | `packages/*/package.json` | sync実行後 |
-| `expo:catalog:clean` | 未使用削除 | ルート `package.json` の `catalog` | fix実行後 |
+| `expo:catalog:clean` | 未使用削除 | root `package.json` の `catalog` | fix実行後 |
 | `expo:catalog:validate` | 整合性検証 | なし | 変更後必ず |
 | `expo:doctor` | 健全性チェック | なし | 最終検証 |
 
@@ -250,21 +252,6 @@ bun run expo:doctor      # Expo検証（17/17チェック合格が理想）
 
 ## 🐛 トラブルシューティング
 
-### バージョン不一致エラー
-
-```bash
-bun run expo:fix
-bun run expo:catalog:sync
-bun install
-bun run expo:doctor
-```
-
-### Metroがパッケージを解決できない
-
-```bash
-cd apps/expo && bunx expo start -c
-```
-
 ### Metro Config: SDK 54+での変更
 
 SDK 54にアップグレードする際、`apps/expo/metro.config.js`の以下の変更が推奨されます：
@@ -306,30 +293,6 @@ bun install         # クリーンインストール
 
 **重要**: `bun.lock`も削除することで、Bunが依存関係を再計算し、重複のない最適な構造で再インストールします。
 
-**その他のクリーンコマンド**:
-```bash
-bun run clean        # node_modulesのみ削除（bun installは手動実行）
-bun run clean:cache  # Bunのグローバルキャッシュもクリア
-```
-
-**補足**: `clean`コマンドは`find`を使用しているため、プロジェクトのどこから実行しても全てのnode_modulesを削除できます。
-
-## 📊 検証用パッケージ
-
-このリポジトリには、エラーケースを検証するための`broken-*`パッケージが含まれています：
-
-- `packages/broken-version` - バージョン不一致
-- `packages/broken-mixed` - Expo管理・非管理混在
-- `packages/broken-dev` - devDependencies配置
-- `packages/broken-peer` - peerDependencies
-
-## 📖 参考リンク
-
-- [Bun Workspaces](https://bun.sh/docs/install/workspaces)
-- [Bun Catalog](https://bun.sh/docs/install/workspaces#catalog)
-- [Expo CLI](https://docs.expo.dev/more/expo-cli/)
-- [Expo SDK 54](https://docs.expo.dev/versions/v54.0.0/)
-
 ## 📦 他のプロジェクトへの適用方法
 
 このカタログ管理システムを既存のExpo + Bunモノレポに適用する最小限の手順です。
@@ -357,7 +320,7 @@ scripts/
 
 ### package.json の変更
 
-#### ルート package.json に追加
+#### root package.json に追加
 
 ```ts
 // package.json (root)
@@ -393,6 +356,14 @@ scripts/
   }
 }
 ```
+
+## 📖 参考リンク
+
+- [Bun Workspaces](https://bun.sh/docs/install/workspaces)
+- [Bun Catalog](https://bun.sh/docs/install/workspaces#catalog)
+- [Expo CLI](https://docs.expo.dev/more/expo-cli/)
+- [Expo SDK 54](https://docs.expo.dev/versions/v54.0.0/)
+
 
 ## 📄 ライセンス
 
