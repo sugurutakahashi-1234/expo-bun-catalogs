@@ -164,14 +164,14 @@ return new Set(Object.keys(bundledModules));
 
 ## 📋 スクリプト（実行順）
 
-**基本フロー**: `expo:sdk:sync` → `expo:sdk:fix` → `bun install` → `expo:sdk:validate`
+**基本フロー**: `expo:sdk:sync` → `expo:sdk:apply` → `bun install` → `expo:sdk:validate`
 
 | スクリプト | 何をする | ファイル変更 | いつ使う |
 |-----------|---------|------------|---------|
-| `expo:sdk:detect` | catalog未定義を検出 | なし | 最初に |
+| `expo:sdk:find` | catalog未定義を検出 | なし | 最初に |
 | `expo:fix` | `expo install --fix`実行 | `apps/expo/package.json` | SDK更新後 |
 | `expo:sdk:sync` | catalogに同期 | ルート `package.json` の `catalog` | fix実行後 |
-| `expo:sdk:fix` | `catalog:`に変換 | `packages/*/package.json` | sync実行後 |
+| `expo:sdk:apply` | `catalog:`に変換 | `packages/*/package.json` | sync実行後 |
 | `expo:sdk:clean` | 未使用削除 | ルート `package.json` の `catalog` | fix実行後 |
 | `expo:sdk:validate` | 整合性検証 | なし | 変更後必ず |
 | `expo:doctor` | 健全性チェック | なし | 最終検証 |
@@ -185,10 +185,10 @@ return new Set(Object.keys(bundledModules));
 bun install
 
 # 2. スクリプト実行（順番通り）
-bun run expo:sdk:detect   # 不足確認
+bun run expo:sdk:find     # 不足確認
 bun run expo:fix         # Expo依存修正
 bun run expo:sdk:sync     # catalog同期
-bun run expo:sdk:fix      # catalog:変換
+bun run expo:sdk:apply    # catalog:変換
 bun run expo:sdk:clean    # 未使用削除
 bun install              # 再インストール
 bun run expo:sdk:validate    # 整合性検証
@@ -199,7 +199,7 @@ bun run expo:doctor      # Expo検証
 
 ```bash
 # 1. 不足を検出
-bun run expo:sdk:detect
+bun run expo:sdk:find
 # → 📦 expo-font, expo-image
 
 # 2. Expoアプリに追加（Expo CLIで正しいバージョン取得）
@@ -207,7 +207,7 @@ cd apps/expo && bunx expo install expo-font expo-image && cd ../..
 
 # 3. スクリプト実行
 bun run expo:sdk:sync     # catalog同期
-bun run expo:sdk:fix      # catalog:変換
+bun run expo:sdk:apply    # catalog:変換
 bun run expo:sdk:clean    # 未使用削除
 bun install              # 再インストール
 bun run expo:sdk:validate    # 整合性検証
@@ -232,7 +232,7 @@ cd ../..
 # 3. スクリプト実行
 bun run expo:fix         # SDK互換バージョンに修正
 bun run expo:sdk:sync     # catalog同期
-bun run expo:sdk:fix      # catalog:変換
+bun run expo:sdk:apply    # catalog:変換
 bun run expo:sdk:clean    # 未使用削除
 
 # 4. クリーンインストール（重複依存関係を解消）
@@ -348,10 +348,10 @@ bun run clean:cache  # Bunのグローバルキャッシュもクリア
 scripts/
 ├── shared/
 │   └── expo-utils.ts
-├── expo-sdk-detect-missing.ts
+├── expo-sdk-find-catalog-gaps.ts
 ├── expo-sdk-validate-catalog.ts
 ├── expo-sdk-sync-catalog.ts
-├── expo-sdk-fix-references.ts
+├── expo-sdk-apply-catalog-references.ts
 └── expo-sdk-clean-catalog.ts
 ```
 
@@ -372,8 +372,8 @@ scripts/
     // Catalog管理用の自動化スクリプト
     "expo:sdk:sync": "bun run scripts/expo-sdk-sync-catalog.ts",
     "expo:sdk:validate": "bun run scripts/expo-sdk-validate-catalog.ts",
-    "expo:sdk:detect": "bun run scripts/expo-sdk-detect-missing.ts",
-    "expo:sdk:fix": "bun run scripts/expo-sdk-fix-references.ts",
+    "expo:sdk:find": "bun run scripts/expo-sdk-find-catalog-gaps.ts",
+    "expo:sdk:apply": "bun run scripts/expo-sdk-apply-catalog-references.ts",
     "expo:sdk:clean": "bun run scripts/expo-sdk-clean-catalog.ts"
   }
 }
