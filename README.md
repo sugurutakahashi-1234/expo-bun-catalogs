@@ -168,15 +168,15 @@ return new Set(Object.keys(bundledModules));
 
 **初回/追加時**: `expo:catalog:find` → `expo:fix` → 標準フロー
 
-| スクリプト | 何をする | ファイル変更 | いつ使う |
-|-----------|---------|------------|---------|
-| `expo:catalog:find` | catalog未定義を検出 | なし | 最初に |
-| `expo:fix` | `expo install --fix`実行 | `apps/expo/package.json` | SDK更新後 |
-| `expo:catalog:sync` | catalogに同期 | root `package.json` の `catalog` | fix実行後 |
-| `expo:catalog:apply` | `catalog:`に変換 | `packages/*/package.json` | sync実行後 |
-| `expo:catalog:clean` | 未使用削除 | root `package.json` の `catalog` | fix実行後 |
-| `expo:catalog:validate` | 整合性検証 | なし | 変更後必ず |
-| `expo:doctor` | 健全性チェック | なし | 最終検証 |
+| スクリプト | 何をする | ファイル変更 |
+|-----------|---------|------------|
+| `expo:catalog:find` | catalog未定義を検出 | なし |
+| `expo:fix` | `expo install --fix`実行 | `apps/expo/package.json` |
+| `expo:catalog:sync` | catalogに同期 | root `package.json` の `catalog` |
+| `expo:catalog:apply` | `catalog:`に変換 | `packages/*/package.json` |
+| `expo:catalog:clean` | 未使用削除 | root `package.json` の `catalog` |
+| `expo:catalog:validate` | 整合性検証 | なし |
+| `expo:doctor` | 健全性チェック | なし |
 
 ## 🚀 基本ワークフロー
 
